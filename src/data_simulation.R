@@ -8,6 +8,8 @@
 
 # Load the packages required:
 library(tidyverse)
+library(ggExtra)
+library(latex2exp)
 library(simstudy)
 
 ######################### Multivariate Normal ######################### 
@@ -125,6 +127,154 @@ multi_normal_data_list <- add_to_data_list(
   missing_type = "mcar",
   relative_missingness = relative_missingness
 )
+
+
+# MAR for x2 for each relative missingness
+simulation_list <- lapply(relative_missingness, function(rel_missingness) {
+  set.seed(2)
+  sample_probs <- as.numeric(
+    multi_normal_data_list$raw$data[[1]][["x1"]] > 
+      mean(multi_normal_data_list$raw$data[[1]][["x1"]])) + 1
+  missing_indicator <- sample(
+    seq_along(sample_probs),
+    size = round(rel_missingness * length(sample_probs)),
+    replace = FALSE,
+    prob = sample_probs
+  )
+  missing_indicator <- seq_along(sample_probs) %in% missing_indicator
+  missingness_x2 <- defMiss(varname = "x2", formula = "..missing_indicator", logit.link = FALSE)
+  miss_mat <- genMiss(
+    multi_normal_data_list$raw$data[[1]],
+    missingness_x2,
+    idvars = "id"
+  )
+  genObs(multi_normal_data_list$raw$data[[1]], miss_mat, idvars = "id")
+})
+
+# hist(simulation_list[[1]]$x1[is.na(simulation_list[[1]]$x2)])
+
+# add simulated data to data list
+multi_normal_data_list <- add_to_data_list(
+  multi_normal_data_list,
+  simulation_name = "mar_x2",
+  data = simulation_list,
+  missing = "x2",
+  missing_type = "mar",
+  relative_missingness = relative_missingness
+)
+
+# MNAR for x2 for each relative missingness
+simulation_list <- lapply(relative_missingness, function(rel_missingness) {
+  set.seed(2)
+  sample_probs <- as.numeric(
+    multi_normal_data_list$raw$data[[1]][["x2"]] > 
+      mean(multi_normal_data_list$raw$data[[1]][["x2"]])) + 1
+  missing_indicator <- sample(
+    seq_along(sample_probs),
+    size = round(rel_missingness * length(sample_probs)),
+    replace = FALSE,
+    prob = sample_probs
+  )
+  missing_indicator <- seq_along(sample_probs) %in% missing_indicator
+  missingness_x2 <- defMiss(varname = "x2", formula = "..missing_indicator", logit.link = FALSE)
+  miss_mat <- genMiss(
+    multi_normal_data_list$raw$data[[1]],
+    missingness_x2,
+    idvars = "id"
+  )
+  genObs(multi_normal_data_list$raw$data[[1]], miss_mat, idvars = "id")
+})
+
+# hist(simulation_list[[1]]$x1[is.na(simulation_list[[1]]$x2)])
+
+# add simulated data to data list
+multi_normal_data_list <- add_to_data_list(
+  multi_normal_data_list,
+  simulation_name = "mnar_x2",
+  data = simulation_list,
+  missing = "x2",
+  missing_type = "mnar",
+  relative_missingness = relative_missingness
+)
+
+var2TeX <- function(string, tex = TRUE) {
+  raw <- paste0(
+    "$",
+    str_extract(string, "([a-z]*)"),
+    "_",
+    str_extract(string, "([0-9]+)"),
+    "$"
+  )
+  if (!tex) {
+    return(raw)
+  }
+  TeX(raw)
+}
+
+plot_single_missing <- function(
+    data_list,
+    simulation_name, 
+    relative_missingness,
+    comparison_variable = "x1",
+    alpha_non_missing = 1,
+    density = FALSE
+  ) {
+  rel_missingness_index <- which(
+    data_list[[simulation_name]]$relative_missingness == relative_missingness
+  )
+  missing_variable <- data_list[[simulation_name]]$missing
+  mean_x <- mean(data_list$raw$data[[1]][[missing_variable]])
+  mean_y <- mean(data_list$raw$data[[1]][[comparison_variable]])
+  plot <- data_list$raw$data[[1]] %>%
+    as_tibble() %>%
+    mutate(
+      missing = is.na(
+        data_list[[simulation_name]]$data[[rel_missingness_index]][[missing_variable]]
+      )
+    ) %>%
+    ggplot(aes(
+      x = .data[[missing_variable]],
+      y = .data[[comparison_variable]], 
+      col = missing,
+      alpha = missing
+    )) +
+    {if (density) geom_density2d()} +
+    {if (!density) geom_point()} +
+    geom_vline(xintercept = mean_x, alpha = 0.5, linetype = "longdash") +
+    geom_hline(yintercept = mean_y, alpha = 0.5, linetype = "longdash") +
+    scale_color_manual(values = c("grey", "red")) +
+    scale_alpha_manual(
+      values = c(alpha_non_missing, 1)
+    ) +
+    labs(
+      x = var2TeX(missing_variable),
+      y = var2TeX(comparison_variable),
+      title = TeX(paste(
+        "Variable with missingness:", var2TeX(missing_variable, tex = FALSE)
+      )),
+      subtitle = paste(
+        "Missingness reason:",
+        str_to_upper(data_list[[simulation_name]]$missing_type),
+        "\nRelative missingness:",
+        relative_missingness
+    )) +
+    coord_fixed() +
+    theme_classic() +
+    theme(legend.position = "bottom")
+  if (!density) {
+    plot <- ggMarginal(plot, type = "density")
+  }
+  plot
+}
+
+plot_single_missing(
+  multi_normal_data_list,
+  simulation_name = "mar_x2",
+  relative_missingness = 0.1,
+  alpha_non_missing = 0.3,
+  density = F
+)
+
 
 save(
   multi_normal_data_list,
