@@ -47,9 +47,9 @@ simulate_multi_normal_dataset <- function(
 }
 
 multi_normal <- simulate_multi_normal_dataset(
-  mu = c(0, 5, 10, -1),
-  sigma = c(1, 2, 3, 0.3),
-  target_formula = "-3 * x1 + 5 * x2 - 0.5 * x3 + 5 * x4",
+  mu = c(0, 5, 10, -1, 3),
+  sigma = c(1, 2, 3, 0.3, 2),
+  target_formula = "-3 * x1 + 5 * x2 - x3 + 5 * x4 + x5",
   target_sd = 3
 )
 
@@ -115,7 +115,7 @@ simulation_list <- lapply(relative_missingness, function(rel_missingness) {
     missingness_x2,
     idvars = "id"
   )
-  genObs(multi_normal_data_list$raw$data[[1]], miss_mat, idvars = "id")
+  genObs(multi_normal_data_list$raw$data[[1]], miss_mat, idvars = "id")[, -1]
 })
 
 # add simulated data to data list
@@ -127,6 +127,7 @@ multi_normal_data_list <- add_to_data_list(
   missing_type = "mcar",
   relative_missingness = relative_missingness
 )
+
 
 
 # MAR for x2 for each relative missingness
@@ -148,7 +149,7 @@ simulation_list <- lapply(relative_missingness, function(rel_missingness) {
     missingness_x2,
     idvars = "id"
   )
-  genObs(multi_normal_data_list$raw$data[[1]], miss_mat, idvars = "id")
+  genObs(multi_normal_data_list$raw$data[[1]], miss_mat, idvars = "id")[, -1]
 })
 
 # hist(simulation_list[[1]]$x1[is.na(simulation_list[[1]]$x2)])
@@ -164,11 +165,36 @@ multi_normal_data_list <- add_to_data_list(
 )
 
 # MNAR for x2 for each relative missingness
-simulation_list <- lapply(relative_missingness, function(rel_missingness) {
+
+# MCAR for x5 for each relative missingness
+
+# simulation_list <- lapply(relative_missingness, function(rel_missingness) {
+#   missingness_x5 <- defMiss(varname = "x5", formula = rel_missingness)
+#   set.seed(2)
+#   miss_mat <- genMiss(
+#     multi_normal_data_list$raw$data[[1]],
+#     missingness_x5,
+#     idvars = "id"
+#   )
+#   genObs(multi_normal_data_list$raw$data[[1]], miss_mat, idvars = "id")
+# })
+# 
+# # add simulated data to data list
+# multi_normal_data_list <- add_to_data_list(
+#   multi_normal_data_list,
+#   simulation_name = "mnar_x2",
+#   data = simulation_list,
+#   missing = "x2",
+#   missing_type = "mnar",
+#   relative_missingness = relative_missingness
+# )
+
+simulation_list2 <- lapply(relative_missingness, function(rel_missingness) {
   set.seed(2)
   sample_probs <- as.numeric(
-    multi_normal_data_list$raw$data[[1]][["x2"]] > 
-      mean(multi_normal_data_list$raw$data[[1]][["x2"]])) + 1
+    multi_normal_data_list$raw$data[[1]][["x5"]] > 
+      mean(multi_normal_data_list$raw$data[[1]][["x5"]])
+  ) + 3
   missing_indicator <- sample(
     seq_along(sample_probs),
     size = round(rel_missingness * length(sample_probs)),
@@ -176,26 +202,43 @@ simulation_list <- lapply(relative_missingness, function(rel_missingness) {
     prob = sample_probs
   )
   missing_indicator <- seq_along(sample_probs) %in% missing_indicator
-  missingness_x2 <- defMiss(varname = "x2", formula = "..missing_indicator", logit.link = FALSE)
+  missingness_x2 <- defMiss(varname = "x5", formula = rel_missingness)
+  missingness_x2 <- defMiss(
+    missingness_x2,
+    varname = "x2",
+    formula = "..missing_indicator", 
+    logit.link = FALSE
+  )
   miss_mat <- genMiss(
     multi_normal_data_list$raw$data[[1]],
     missingness_x2,
     idvars = "id"
   )
-  genObs(multi_normal_data_list$raw$data[[1]], miss_mat, idvars = "id")
+  genObs(multi_normal_data_list$raw$data[[1]], miss_mat, idvars = "id")[, -1]
+  
 })
-
-# hist(simulation_list[[1]]$x1[is.na(simulation_list[[1]]$x2)])
 
 # add simulated data to data list
 multi_normal_data_list <- add_to_data_list(
   multi_normal_data_list,
   simulation_name = "mnar_x2",
-  data = simulation_list,
+  data = simulation_list2,
   missing = "x2",
   missing_type = "mnar",
   relative_missingness = relative_missingness
 )
+
+ #hist(simulation_list[[1]]$x1[is.na(simulation_list[[1]]$x2)])
+
+# add simulated data to data list
+# multi_normal_data_list <- add_to_data_list(
+#   multi_normal_data_list,
+#   simulation_name = "mnar_x2",
+#   data = simulation_list,
+#   missing = "x2",
+#   missing_type = "mnar",
+#   relative_missingness = relative_missingness
+# )
 
 var2TeX <- function(string, tex = TRUE) {
   raw <- paste0(
@@ -269,17 +312,45 @@ plot_single_missing <- function(
 
 plot_single_missing(
   multi_normal_data_list,
-  simulation_name = "mar_x2",
+  simulation_name = "mnar_x2",
   relative_missingness = 0.1,
   alpha_non_missing = 0.3,
+  comparison_variable = "x5",
   density = F
 )
 
+#' Add missingness indicators to datasets of the data list
+#'
+#' @param data_list 
+#'
+#' @return amended data list
+create_miss_ind <- function(data_list) {
+  for (i in 1:length(data_list)) {
+    for (k in 1:length(data_list[[i]]$data)) {
+      df <- data_list[[i]]$data[[k]]
+      missing_column_indicator <- colSums(is.na(df)) > 0
+      missing_columns <- names(missing_column_indicator)[missing_column_indicator]
+      for (missing_column in missing_columns) {
+        df[[paste0("missing_", missing_column)]] <- if_else(
+          is.na(df[[missing_column]]), 1, 0
+        )
+      }
+      data_list[[i]]$data[[k]] <- df
+    }
+  }
+  data_list
+}
 
-save(
-  multi_normal_data_list,
-  file = paste0(here::here(), "/data/multi_normal.RData")
-)
+multi_normal_data_list <- create_miss_ind(multi_normal_data_list)
+# get rid of id for the raw data:
+multi_normal_data_list$raw$data[[1]] <- multi_normal_data_list$raw$data[[1]][, -1]
+multi_normal_data_list$raw$data[[1]]
+
+
+# save(
+#   multi_normal_data_list,
+#   file = paste0(here::here(), "/data/multi_normal.RData")
+# )
 
 
 
