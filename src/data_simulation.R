@@ -350,19 +350,21 @@ simulate_mixed_dataset <- function(
   )
   mixed_data_def <- defData(
     mixed_data_def,
-    varname = "x3", dist = "normal", formula = 3, variance = 0.1
+    varname = "x3", dist = "gamma", formula = 2, variance = 2
   )
   mixed_data_def <- defData(
     mixed_data_def,
-    varname = "x4", dist = "gamma", formula = "x3", variance = 0.5
+    varname = "x4", dist = "normal", formula = "x3", variance = 4
   )
   mixed_data_def <- defData(
     mixed_data_def,
-    varname = "x5", dist = "normal", formula = "x4", variance = 2
+    varname = "x5", dist = "normal", formula = "x4 * 0.5 + x1", variance = 2
   )
   mixed_data_def <- defData(
     mixed_data_def,
-    varname = "x6", dist = "binary", formula = 0.3
+    varname = "x6", dist = "categorical", 
+    formula = "0.2;0.3;0.5",
+    variance = "0;1;2"
   )
   mixed_data_def <- defData(
     mixed_data_def,
@@ -381,7 +383,7 @@ simulate_mixed_dataset <- function(
   mixed_data_def <- defData(
     mixed_data_def,
     varname = "y",
-    formula = "-2 * x1 + 3 * x2 - x3 + 0.5 * x4 + 1.5 * x5 + 0.5 * x6 - 1.5 * x7 + 1.5 * x8 + 2 * x9",
+    formula = "-2 * x1 + 3 * x2 - 0.5 *x3 + 0.5 * x4 + 1.5 * x5 + x6 - 1.5 * x7 + 1.5 * x8 + 2 * x9",
     dist = "normal",
     variance = 5
   )
@@ -411,6 +413,14 @@ lm(
 ) %>%
   summary()
 
+# base graph
+pcalg::plot(
+  pcalg::pc(
+    list(C = cor(mixed_df[, 2:11]), n =1000),
+    p = 10, alpha = 0.01,
+    indepTest = pcalg::gaussCItest
+  )
+)
 
 # Store the raw data in the final data list for the multivariate normal 
 # simulations
