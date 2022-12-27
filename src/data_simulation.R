@@ -48,8 +48,8 @@ simulate_multi_normal_dataset <- function(
 
 multi_normal <- simulate_multi_normal_dataset(
   mu = c(0, 5, 10, -1, 3),
-  sigma = c(1, 2, 3, 0.3, 2),
-  target_formula = "-3 * x1 + 5 * x2 - x3 + 5 * x4 + x5",
+  sigma = c(1, 2, 3, 0.3, 1),
+  target_formula = "-3 * x1 + 5 * x2 - x3 + 5 * x4 + 2 * x5",
   target_sd = 3
 )
 
@@ -135,7 +135,8 @@ simulation_list <- lapply(relative_missingness, function(rel_missingness) {
   set.seed(2)
   sample_probs <- as.numeric(
     multi_normal_data_list$raw$data[[1]][["x1"]] > 
-      mean(multi_normal_data_list$raw$data[[1]][["x1"]])) + 1
+      mean(multi_normal_data_list$raw$data[[1]][["x1"]])
+  ) + 1
   missing_indicator <- sample(
     seq_along(sample_probs),
     size = round(rel_missingness * length(sample_probs)),
@@ -166,35 +167,12 @@ multi_normal_data_list <- add_to_data_list(
 
 # MNAR for x2 for each relative missingness
 
-# MCAR for x5 for each relative missingness
-
-# simulation_list <- lapply(relative_missingness, function(rel_missingness) {
-#   missingness_x5 <- defMiss(varname = "x5", formula = rel_missingness)
-#   set.seed(2)
-#   miss_mat <- genMiss(
-#     multi_normal_data_list$raw$data[[1]],
-#     missingness_x5,
-#     idvars = "id"
-#   )
-#   genObs(multi_normal_data_list$raw$data[[1]], miss_mat, idvars = "id")
-# })
-# 
-# # add simulated data to data list
-# multi_normal_data_list <- add_to_data_list(
-#   multi_normal_data_list,
-#   simulation_name = "mnar_x2",
-#   data = simulation_list,
-#   missing = "x2",
-#   missing_type = "mnar",
-#   relative_missingness = relative_missingness
-# )
-
 simulation_list2 <- lapply(relative_missingness, function(rel_missingness) {
   set.seed(2)
   sample_probs <- as.numeric(
     multi_normal_data_list$raw$data[[1]][["x5"]] > 
-      mean(multi_normal_data_list$raw$data[[1]][["x5"]])
-  ) + 3
+      (mean(multi_normal_data_list$raw$data[[1]][["x5"]]))
+  ) * 3 + 1
   missing_indicator <- sample(
     seq_along(sample_probs),
     size = round(rel_missingness * length(sample_probs)),
@@ -223,8 +201,8 @@ multi_normal_data_list <- add_to_data_list(
   multi_normal_data_list,
   simulation_name = "mnar_x2",
   data = simulation_list2,
-  missing = "x2",
-  missing_type = "mnar",
+  missing = c("x2", "x5"),
+  missing_type = c("mnar", "mcar"),
   relative_missingness = relative_missingness
 )
 
@@ -266,6 +244,9 @@ plot_single_missing <- function(
     data_list[[simulation_name]]$relative_missingness == relative_missingness
   )
   missing_variable <- data_list[[simulation_name]]$missing
+  if (length(missing_variable) > 1) {
+    missing_variable <- missing_variable[1]
+  }
   mean_x <- mean(data_list$raw$data[[1]][[missing_variable]])
   mean_y <- mean(data_list$raw$data[[1]][[comparison_variable]])
   plot <- data_list$raw$data[[1]] %>%
@@ -344,7 +325,7 @@ create_miss_ind <- function(data_list) {
 multi_normal_data_list <- create_miss_ind(multi_normal_data_list)
 # get rid of id for the raw data:
 multi_normal_data_list$raw$data[[1]] <- multi_normal_data_list$raw$data[[1]][, -1]
-multi_normal_data_list$raw$data[[1]]
+# multi_normal_data_list$raw$data[[1]]
 
 
 # save(
@@ -353,6 +334,93 @@ multi_normal_data_list$raw$data[[1]]
 # )
 
 
+######################### Mixed Data set ######################### 
 
+# Simulate the raw data
+simulate_mixed_dataset <- function(
+    n = 1000,
+    seed = 2
+) {
+  mixed_data_def <- defData(
+    varname = "x1", dist = "normal", formula = 0, variance = 1
+  )
+  mixed_data_def <- defData(
+    mixed_data_def,
+    varname = "x2", dist = "beta", formula = 0.5, variance = 2
+  )
+  mixed_data_def <- defData(
+    mixed_data_def,
+    varname = "x3", dist = "normal", formula = 3, variance = 0.1
+  )
+  mixed_data_def <- defData(
+    mixed_data_def,
+    varname = "x4", dist = "gamma", formula = "x3", variance = 0.5
+  )
+  mixed_data_def <- defData(
+    mixed_data_def,
+    varname = "x5", dist = "normal", formula = "x4", variance = 2
+  )
+  mixed_data_def <- defData(
+    mixed_data_def,
+    varname = "x6", dist = "binary", formula = 0.3
+  )
+  mixed_data_def <- defData(
+    mixed_data_def,
+    varname = "x7", dist = "binary", formula = 0.4
+  )
+  mixed_data_def <- defData(
+    mixed_data_def,
+    varname = "x8", dist = "binary", formula = 0.6
+  )
+  mixed_data_def <- defData(
+    mixed_data_def,
+    varname = "x9", dist = "binary", formula = "0.2 + 0.6 * x8"
+  )
+  
+  
+  mixed_data_def <- defData(
+    mixed_data_def,
+    varname = "y",
+    formula = "-2 * x1 + 3 * x2 - x3 + 0.5 * x4 + 1.5 * x5 + 0.5 * x6 - 1.5 * x7 + 1.5 * x8 + 2 * x9",
+    dist = "normal",
+    variance = 5
+  )
+  set.seed(seed)
+  genData(n, mixed_data_def)
+}
+
+mixed_df <- simulate_mixed_dataset()
+
+# Visualize the raw data
+GGally::ggpairs(
+  mixed_df,
+  columns = 2:ncol(mixed_df),
+  lower = list(continuous = "density")
+) +
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    axis.ticks = element_blank(), 
+    axis.text = element_blank()
+  )
+
+# Assess the fit of the raw data
+lm(
+  y ~ .,
+  data = mixed_df %>% select(-id)
+) %>%
+  summary()
+
+
+# Store the raw data in the final data list for the multivariate normal 
+# simulations
+mixed_data_list <- list(
+  raw = list(
+    data = list(mixed_df),
+    missing = NA,
+    missing_type = NA,
+    relative_missingness = 0
+  )
+)
 
 
