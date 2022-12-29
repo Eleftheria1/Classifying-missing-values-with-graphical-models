@@ -434,3 +434,314 @@ mixed_data_list <- list(
 )
 
 
+# MCAR for each relative missingness
+simulation_list <- lapply(relative_missingness, function(rel_missingness) {
+  missingness <- defMiss(varname = "x2", formula = rel_missingness)
+  missingness <- defMiss(
+    missingness, varname = "x3", formula = rel_missingness
+  )
+  missingness <- defMiss(
+    missingness, varname = "x5", formula = rel_missingness
+  )
+  missingness <- defMiss(
+    missingness, varname = "x6", formula = rel_missingness
+  )
+  missingness <- defMiss(
+    missingness, varname = "x8", formula = rel_missingness
+  )
+  missingness <- defMiss(
+    missingness, varname = "y", formula = rel_missingness
+  )
+  
+  set.seed(2)
+  miss_mat <- genMiss(
+    mixed_data_list$raw$data[[1]],
+    missingness,
+    idvars = "id"
+  )
+  genObs(mixed_data_list$raw$data[[1]], miss_mat, idvars = "id")[, -1]
+})
+
+# add simulated data to data list
+mixed_data_list <- add_to_data_list(
+  mixed_data_list,
+  simulation_name = "mcar",
+  data = simulation_list,
+  missing = c("x2", "x3", "x5", "x6", "x8", "x10"),
+  missing_type = rep("mcar", 6),
+  relative_missingness = relative_missingness
+)
+
+
+create_missingness_indicator <- function(raw_df, from, rel_missingness, seed = 2, sig = TRUE) {
+  set.seed(seed)
+  if (sig) {
+    sig <- function(x) { 1 / (1 + exp(-x)) }
+    studentized_from <- (raw_df[[from]] - mean(raw_df[[from]])) / sd(raw_df[[from]])
+    sample_probs <- as.numeric(
+      sig(1.5 * studentized_from)
+    )
+  } else {
+    ecdf_from <- ecdf(raw_df[[from]])
+    sample_probs <- as.numeric(
+      ecdf_from(raw_df[[from]])
+    )
+  }
+  
+  missing_indicator <- sample(
+    seq_along(sample_probs),
+    size = round(rel_missingness * length(sample_probs)),
+    replace = FALSE,
+    prob = sample_probs
+  )
+  seq_along(sample_probs) %in% missing_indicator
+}
+
+# MAR for each relative missingness
+simulation_list <- lapply(relative_missingness, function(rel_missingness) {
+  missingness_indicator_x2 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x1",
+    rel_missingness = rel_missingness
+  )
+  missingness <- defMiss(
+    varname = "x2",
+    formula = "..missingness_indicator_x2",
+    logit.link = FALSE
+  )
+  
+  missingness_indicator_x3 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x1",
+    rel_missingness = rel_missingness,
+    seed = 3
+  )
+  missingness <- defMiss(
+    missingness,
+    varname = "x3",
+    formula = "..missingness_indicator_x3",
+    logit.link = FALSE
+  )
+  
+  missingness_indicator_x5 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x1",
+    rel_missingness = rel_missingness,
+    seed = 5
+  )
+  missingness <- defMiss(
+    missingness,
+    varname = "x5",
+    formula = "..missingness_indicator_x5",
+    logit.link = FALSE
+  )
+  
+  missingness_indicator_x6 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x7",
+    rel_missingness = rel_missingness,
+    seed = 6
+  )
+  missingness <- defMiss(
+    missingness,
+    varname = "x6",
+    formula = "..missingness_indicator_x6",
+    logit.link = FALSE
+  )
+  
+  missingness_indicator_x8 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x7",
+    rel_missingness = rel_missingness,
+    seed = 8
+  )
+  missingness <- defMiss(
+    missingness,
+    varname = "x8",
+    formula = "..missingness_indicator_x8",
+    logit.link = FALSE
+  )
+  
+  missingness_indicator_from1 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x1",
+    rel_missingness = rel_missingness,
+    seed = 11
+  )
+  missingness_indicator_from4 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x4",
+    rel_missingness = rel_missingness,
+    seed = 14
+  )
+  combined_indicator <- missingness_indicator_from1 | missingness_indicator_from4
+  target_missings <- round(rel_missingness * dim(mixed_data_list$raw$data[[1]])[1])
+  set_to_false <- sample(which(combined_indicator), sum(combined_indicator) - target_missings)
+  combined_indicator[set_to_false] = FALSE
+  missingness <- defMiss(
+    missingness,
+    varname = "y",
+    formula = "..combined_indicator",
+    logit.link = FALSE
+  )
+
+  set.seed(2)
+  miss_mat <- genMiss(
+    mixed_data_list$raw$data[[1]],
+    missingness,
+    idvars = "id"
+  )
+  genObs(mixed_data_list$raw$data[[1]], miss_mat, idvars = "id")[, -1]
+})
+
+# add simulated data to data list
+mixed_data_list <- add_to_data_list(
+  mixed_data_list,
+  simulation_name = "mar",
+  data = simulation_list,
+  missing = c("x2", "x3", "x5", "x6", "x8", "x10"),
+  missing_type = rep("mar", 6),
+  relative_missingness = relative_missingness
+)
+
+# MNAR for each relative missingness
+simulation_list <- lapply(relative_missingness, function(rel_missingness) {
+  missingness <- defMiss(
+    varname = "x1",
+    formula = rel_missingness
+  )
+  
+  missingness_indicator_x2 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x1",
+    rel_missingness = rel_missingness
+  )
+  missingness <- defMiss(
+    missingness,
+    varname = "x2",
+    formula = "..missingness_indicator_x2",
+    logit.link = FALSE
+  )
+  
+  
+  missingness_indicator_x3 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x2",
+    rel_missingness = rel_missingness,
+    seed = 3
+  )
+  missingness <- defMiss(
+    missingness,
+    varname = "x3",
+    formula = "..missingness_indicator_x3",
+    logit.link = FALSE
+  )
+  
+  missingness_indicator_x5fromx1 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x1",
+    rel_missingness = rel_missingness,
+    seed = 5
+  )
+  missingness_indicator_x5fromx4 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x4",
+    rel_missingness = rel_missingness,
+    seed = 55
+  )
+  combined_indicator_x5 <- missingness_indicator_x5fromx1 | missingness_indicator_x5fromx4
+  target_missings <- round(rel_missingness * dim(mixed_data_list$raw$data[[1]])[1])
+  set_to_false <- sample(which(combined_indicator_x5), sum(combined_indicator_x5) - target_missings)
+  combined_indicator_x5[set_to_false] = FALSE
+  
+  missingness <- defMiss(
+    missingness,
+    varname = "x5",
+    formula = "..combined_indicator_x5",
+    logit.link = FALSE
+  )
+  
+  missingness <- defMiss(
+    missingness,
+    varname = "x7",
+    formula = rel_missingness
+  )
+  
+  missingness_indicator_x6 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x7",
+    rel_missingness = rel_missingness,
+    seed = 6
+  )
+  missingness <- defMiss(
+    missingness,
+    varname = "x6",
+    formula = "..missingness_indicator_x6",
+    logit.link = FALSE
+  )
+  
+  missingness_indicator_x8 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x7",
+    rel_missingness = rel_missingness,
+    seed = 8
+  )
+  missingness <- defMiss(
+    missingness,
+    varname = "x8",
+    formula = "..missingness_indicator_x8",
+    logit.link = FALSE
+  )
+  
+  missingness_indicator_from1 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x1",
+    rel_missingness = rel_missingness,
+    seed = 11
+  )
+  missingness_indicator_from7 <- create_missingness_indicator(
+    mixed_data_list$raw$data[[1]],
+    from = "x7",
+    rel_missingness = rel_missingness,
+    seed = 14
+  )
+  combined_indicator <- missingness_indicator_from1 | missingness_indicator_from7
+  target_missings <- round(rel_missingness * dim(mixed_data_list$raw$data[[1]])[1])
+  set_to_false <- sample(which(combined_indicator), sum(combined_indicator) - target_missings)
+  combined_indicator[set_to_false] = FALSE
+  missingness <- defMiss(
+    missingness,
+    varname = "y",
+    formula = "..combined_indicator",
+    logit.link = FALSE
+  )
+  
+  set.seed(2)
+  miss_mat <- genMiss(
+    mixed_data_list$raw$data[[1]],
+    missingness,
+    idvars = "id"
+  )
+  genObs(mixed_data_list$raw$data[[1]], miss_mat, idvars = "id")[, -1]
+})
+
+# add simulated data to data list
+mixed_data_list <- add_to_data_list(
+  mixed_data_list,
+  simulation_name = "mnar",
+  data = simulation_list,
+  missing = c("x1", "x2", "x3", "x5", "x6", "x7", "x8", "x10"),
+  missing_type = c("mcar", "mnar", "mnar", "mnar","mnar", "mcar", "mnar", "mnar"),
+  relative_missingness = relative_missingness
+)
+
+
+mixed_data_list <- create_miss_ind(mixed_data_list)
+# get rid of id for the raw data:
+mixed_data_list$raw$data[[1]] <- mixed_data_list$raw$data[[1]][, -1]
+
+
+# save(
+#   mixed_data_list,
+#   file = paste0(here::here(), "/data/mixed_data.RData")
+# )

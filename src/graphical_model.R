@@ -5,6 +5,7 @@
 # Get required packages & data
 library(tidyverse)
 load("data/multi_normal.RData")
+load("data/mixed_data.RData")
 source("mvpc/CITest.R")
 source("mvpc/MissingValuePC.R")
 
@@ -20,7 +21,7 @@ plot_graph_fit <- function(graph_fit, labels, experiment, rel_missingess) {
     igraph_obj,
     mark.col = "blue",
     vertex.color = "lightblue",
-    vertex.size = 30,
+    vertex.size = 20,
     edge.arrow.size = 0.5,
     label.cex = 12,
     main = paste(
@@ -81,7 +82,12 @@ fitted_mvpc_graph <- apply_mvpc(
   rel_missingness = 0.3,
   alpha = 0.01
 )
-
+fitted_mvpc_graph <- apply_mvpc(
+  mixed_data_list,
+  experiment = "mar",
+  rel_missingness = 0.1,
+  alpha = 0.01
+)
 
 # fit and visualize all at the same time
 for (experiment in names(multi_normal_data_list)[2:length(multi_normal_data_list)]) {
