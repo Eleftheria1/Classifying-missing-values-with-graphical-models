@@ -676,10 +676,22 @@ simulation_list <- lapply(relative_missingness, function(rel_missingness) {
     rel_missingness = rel_missingness,
     seed = 55
   )
-  combined_indicator_x5 <- missingness_indicator_x5fromx1 | missingness_indicator_x5fromx4
-  target_missings <- round(rel_missingness * dim(mixed_data_list$raw$data[[1]])[1])
-  set_to_false <- sample(which(combined_indicator_x5), sum(combined_indicator_x5) - target_missings)
-  combined_indicator_x5[set_to_false] = FALSE
+  
+  missingness_positions_x5fromx1 <- which(missingness_indicator_x5fromx1)
+  missingness_positions_x5fromx1 <- sample(
+    missingness_positions_x5fromx1,
+    size = round(0.8 * length(missingness_positions_x5fromx1))
+  )
+  missingness_positions_x5fromx4 <- which(missingness_indicator_x5fromx4)
+  missingness_positions_x5fromx4 <- sample(
+    missingness_positions_x5fromx4,
+    size = round(0.2 * length(missingness_positions_x5fromx4))
+  )
+  
+  combined_indicator_x5 <- (
+    (seq_along(missingness_indicator_x5fromx1) %in% missingness_positions_x5fromx1) |
+      (seq_along(missingness_indicator_x5fromx4) %in% missingness_positions_x5fromx4)
+  )
   
   missingness <- defMiss(
     missingness,

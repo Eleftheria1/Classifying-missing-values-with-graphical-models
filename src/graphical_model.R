@@ -128,13 +128,15 @@ fitted_graph <- apply_graph_fitting(
   multi_normal_data_list,
   experiment = "mnar_x2",
   rel_missingness = 0.3,
-  alpha = 0.01
+  alpha = 0.01,
+  type = "mvpc"
 )
 fitted_graph <- apply_graph_fitting(
   mixed_data_list,
   experiment = "mnar",
   rel_missingness = 0.3,
-  alpha = 0.01
+  alpha = 0.01,
+  type = "mvpc"
 )
 
 # fit and visualize all at the same time

@@ -145,9 +145,18 @@ gaussCItest.td <- function(x, y, S, suffStat) {
   ## suffStat: the class contains the dataset and other necessary variables
   ##    suffStat$data: the dataset
   ##--------------
-  ## Return: the p-value of the test 
+  ## Return: the p-value of the test
+  if (length(S) > 0) {
+    data = test_wise_deletion(c(x,y,S),suffStat$data)
+    if ((length(unique(data[, x])) == 1) |
+        (length(unique(data[, y])) == 1)) {
+      S <- integer()
+      data = test_wise_deletion(c(x,y,S),suffStat$data)
+    }
+  } else {
+    data = test_wise_deletion(c(x,y,S),suffStat$data)
+  }
   
-  data = test_wise_deletion(c(x,y,S),suffStat$data)
   suffStat$data = data
   suffStat$C = cor(data, use = "pairwise.complete.obs")
   # assumption of no masking missingness
