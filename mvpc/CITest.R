@@ -51,6 +51,8 @@ binCItest.permc<- function(x, y, S, suffStat){
         dat.wi <- data[ind_wi, 1:length(ind_test)]
         p.xy.wi <- apply(dat.wi,2, function(x) sum(x)/length(x))
         cor.xy.wi <- cor(dat.wi, use = "pairwise.complete.obs")
+        # assumption of no masking missingness
+        cor.xy.wi[is.na(cor.xy.wi)] <- 0
         p.joint.w[[i]] <- ObtainMultBinaryDist(corr = cor.xy.wi, marg.probs = p.xy.wi )
       }
       
@@ -131,6 +133,8 @@ gaussCItest.td.ref <- function(x, y, S, suffStat) {
   
   suffStat$data = data
   suffStat$C = cor(data, use = "pairwise.complete.obs")
+  # assumption of no masking missingness
+  suffStat$C[is.na(suffStat$C)] <- 0
   suffStat$n = length(data[,1])
   gaussCItest(x, y, S, suffStat)
 }
@@ -146,6 +150,8 @@ gaussCItest.td <- function(x, y, S, suffStat) {
   data = test_wise_deletion(c(x,y,S),suffStat$data)
   suffStat$data = data
   suffStat$C = cor(data, use = "pairwise.complete.obs")
+  # assumption of no masking missingness
+  suffStat$C[is.na(suffStat$C)] <- 0
   suffStat$n = length(data[,1])
   gaussCItest(x, y, S, suffStat)
 }
@@ -206,7 +212,13 @@ gaussCItest.permc <- function(x, y, S, suffStat){
   for(i in 1:length(ind_test)){ # NOTE: the order always the "1(x) CI 2(y) given all the others (S)"  The order of xyS and the order of PermC test 
     data_perm[,i]=vir[[i]]
   }
-  suffStat_perm = list(C=cor(data_perm, use = "pairwise.complete.obs"), n=length(data_perm[,1]))
+  temp_cor <- cor(data_perm, use = "pairwise.complete.obs")
+  # assumption of no self masked missingness
+  temp_cor[is.na(temp_cor)] <- 0
+  suffStat_perm = list(
+    C = temp_cor, 
+    n = length(data_perm[,1])
+  )
   if(length(ind_test)>2){
     pval = gaussCItest(1, 2, 3:length(ind_test), suffStat_perm)
     pval

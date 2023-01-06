@@ -219,6 +219,9 @@ multi_normal_data_list <- add_to_data_list(
 # )
 
 var2TeX <- function(string, tex = TRUE) {
+  if (string == "y") {
+    return(string)
+  }
   raw <- paste0(
     "$",
     str_extract(string, "([a-z]*)"),
@@ -238,14 +241,15 @@ plot_single_missing <- function(
     relative_missingness,
     comparison_variable = "x1",
     alpha_non_missing = 1,
-    density = FALSE
+    density = FALSE,
+    missingness_index = 1
   ) {
   rel_missingness_index <- which(
     data_list[[simulation_name]]$relative_missingness == relative_missingness
   )
   missing_variable <- data_list[[simulation_name]]$missing
   if (length(missing_variable) > 1) {
-    missing_variable <- missing_variable[1]
+    missing_variable <- missing_variable[missingness_index]
   }
   mean_x <- mean(data_list$raw$data[[1]][[missing_variable]])
   mean_y <- mean(data_list$raw$data[[1]][[comparison_variable]])
@@ -392,7 +396,6 @@ simulate_mixed_dataset <- function(
 }
 
 mixed_df <- simulate_mixed_dataset()
-
 # Visualize the raw data
 GGally::ggpairs(
   mixed_df,
@@ -473,13 +476,16 @@ mixed_data_list <- add_to_data_list(
 )
 
 
-create_missingness_indicator <- function(raw_df, from, rel_missingness, seed = 2, sig = TRUE) {
+create_missingness_indicator <- function(
+    raw_df, from, rel_missingness,
+    seed = 2, sig = TRUE, multiplier = 1.5
+) {
   set.seed(seed)
   if (sig) {
     sig <- function(x) { 1 / (1 + exp(-x)) }
     studentized_from <- (raw_df[[from]] - mean(raw_df[[from]])) / sd(raw_df[[from]])
     sample_probs <- as.numeric(
-      sig(1.5 * studentized_from)
+      sig(multiplier * studentized_from)
     )
   } else {
     ecdf_from <- ecdf(raw_df[[from]])
@@ -566,7 +572,7 @@ simulation_list <- lapply(relative_missingness, function(rel_missingness) {
     mixed_data_list$raw$data[[1]],
     from = "x1",
     rel_missingness = rel_missingness,
-    seed = 11
+    seed = 11,
   )
   missingness_indicator_from4 <- create_missingness_indicator(
     mixed_data_list$raw$data[[1]],
@@ -574,10 +580,21 @@ simulation_list <- lapply(relative_missingness, function(rel_missingness) {
     rel_missingness = rel_missingness,
     seed = 14
   )
-  combined_indicator <- missingness_indicator_from1 | missingness_indicator_from4
-  target_missings <- round(rel_missingness * dim(mixed_data_list$raw$data[[1]])[1])
-  set_to_false <- sample(which(combined_indicator), sum(combined_indicator) - target_missings)
-  combined_indicator[set_to_false] = FALSE
+  missingness_positions_from1 <- which(missingness_indicator_from1)
+  missingness_positions_from1 <- sample(
+    missingness_positions_from1,
+    size = round(0.8 * length(missingness_positions_from1))
+  )
+  missingness_positions_from4 <- which(missingness_indicator_from4)
+  missingness_positions_from4 <- sample(
+    missingness_positions_from4,
+    size = round(0.2 * length(missingness_positions_from4))
+  )
+  
+  combined_indicator <- (
+    (seq_along(missingness_indicator_from1) %in% missingness_positions_from1) |
+      (seq_along(missingness_indicator_from1) %in% missingness_positions_from4)
+  )
   missingness <- defMiss(
     missingness,
     varname = "y",
@@ -599,9 +616,19 @@ mixed_data_list <- add_to_data_list(
   mixed_data_list,
   simulation_name = "mar",
   data = simulation_list,
-  missing = c("x2", "x3", "x5", "x6", "x8", "x10"),
+  missing = c("x2", "x3", "x5", "x6", "x8", "y"),
   missing_type = rep("mar", 6),
   relative_missingness = relative_missingness
+)
+
+plot_single_missing(
+  mixed_data_list,
+  simulation_name = "mar",
+  relative_missingness = 0.1,
+  alpha_non_missing = 0.3,
+  comparison_variable = "x1",
+  density = F,
+  missingness_index = 6
 )
 
 # MNAR for each relative missingness
@@ -730,7 +757,7 @@ mixed_data_list <- add_to_data_list(
   mixed_data_list,
   simulation_name = "mnar",
   data = simulation_list,
-  missing = c("x1", "x2", "x3", "x5", "x6", "x7", "x8", "x10"),
+  missing = c("x1", "x2", "x3", "x5", "x6", "x7", "x8", "y"),
   missing_type = c("mcar", "mnar", "mnar", "mnar","mnar", "mcar", "mnar", "mnar"),
   relative_missingness = relative_missingness
 )
@@ -740,6 +767,20 @@ mixed_data_list <- create_miss_ind(mixed_data_list)
 # get rid of id for the raw data:
 mixed_data_list$raw$data[[1]] <- mixed_data_list$raw$data[[1]][, -1]
 
+### Some debugging code
+# View(round(cor(mixed_data_list$mar$data[[2]], use = "pairwise.complete.obs"), 2))
+filled_cor <- cor(mixed_data_list$mnar$data[[2]], use = "pairwise.complete.obs")
+filled_cor[is.na(filled_cor)] <- 0
+pcalg::plot(
+  pcalg::pc(
+    list(
+      C = filled_cor,
+      n = 1000
+    ),
+    p = ncol(mixed_data_list$mnar$data[[2]]), alpha = 0.01,
+    indepTest = pcalg::gaussCItest
+  )
+)
 
 # save(
 #   mixed_data_list,

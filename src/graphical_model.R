@@ -6,8 +6,13 @@
 library(tidyverse)
 load("data/multi_normal.RData")
 load("data/mixed_data.RData")
-source("mvpc/CITest.R")
-source("mvpc/MissingValuePC.R")
+
+use_mvpc <- TRUE
+if (use_mvpc) {
+  source("mvpc/CITest.R")
+  source("mvpc/MissingValuePC.R")
+}
+
 
 
 plot_graph_fit <- function(graph_fit, labels, experiment, rel_missingess) {
@@ -57,47 +62,103 @@ fit_mvpc_graph <- function(
   mvpc_fit
 }
 
-apply_mvpc <- function(
+fit_pc_graph <- function(
+    data, relative_missingness, experiment,
+    alpha = 0.01,
+    plot_graph = TRUE
+) {
+  filled_cor <- cor(as.data.frame(data), use = "pairwise.complete.obs")
+  # set NAs to zero according to the assumption of no self masked missingness
+  filled_cor[is.na(filled_cor)] <- 0
+  pc_fit <- pcalg::pc(
+    suffStat = list(
+      C = filled_cor,
+      n = nrow(data)
+    ),
+    indepTest = pcalg::gaussCItest,
+    p = ncol(data),
+    alpha = alpha
+  )
+  if (plot_graph) {
+    plot_graph_fit(
+      pc_fit,
+      labels = colnames(data),
+      experiment = experiment,
+      rel_missingess = relative_missingness
+    )
+  }
+  pc_fit
+}
+
+apply_graph_fitting <- function(
   data_list,
   experiment,
   rel_missingness,
+  type = c("pc", "mvpc"),
   alpha = 0.01,
   plot_graph = TRUE
   ) {
+  type = match.arg(type)
   rel_missingness_index <- which(
     data_list[[experiment]]$relative_missingness == rel_missingness
   )
-  fit_mvpc_graph(
-    data = as.data.frame(data_list[[experiment]]$data[[rel_missingness_index]]),
-    relative_missingness = rel_missingness,
-    experiment = experiment,
-    plot_graph = plot_graph,
-    alpha = alpha
-  )
+  if (type == "mvpc") {
+    fit_mvpc_graph(
+      data = as.data.frame(data_list[[experiment]]$data[[rel_missingness_index]]),
+      relative_missingness = rel_missingness,
+      experiment = experiment,
+      plot_graph = plot_graph,
+      alpha = alpha
+    )
+  } else if (type == "pc") {
+    fit_pc_graph(
+      data = as.data.frame(data_list[[experiment]]$data[[rel_missingness_index]]),
+      relative_missingness = rel_missingness,
+      experiment = experiment,
+      plot_graph = plot_graph,
+      alpha = alpha
+    )
+  } else {
+    stop("Type not implemented")
+  }
+  
 }
 set.seed(123)
-fitted_mvpc_graph <- apply_mvpc(
+fitted_graph <- apply_graph_fitting(
   multi_normal_data_list,
   experiment = "mnar_x2",
   rel_missingness = 0.3,
   alpha = 0.01
 )
-fitted_mvpc_graph <- apply_mvpc(
+fitted_graph <- apply_graph_fitting(
   mixed_data_list,
-  experiment = "mar",
-  rel_missingness = 0.1,
+  experiment = "mnar",
+  rel_missingness = 0.3,
   alpha = 0.01
 )
 
 # fit and visualize all at the same time
-for (experiment in names(multi_normal_data_list)[2:length(multi_normal_data_list)]) {
-  for (rel_missing_i in seq_along(multi_normal_data_list[[experiment]]$relative_missingness)) {
-    multi_normal_data_list[[experiment]]$graph[[rel_missing_i]] <- fit_mvpc_graph(
-      data = multi_normal_data_list[[experiment]]$data[[rel_missing_i]],
-      relative_missingness = multi_normal_data_list[[experiment]]$relative_missingness[[rel_missing_i]],
-      experiment = experiment,
-      plot_graph = TRUE, alpha = 0.01
-    )
+data_choice <- multi_normal_data_list
+data_choice <- mixed_data_list
+data_choice_string <- "normal"
+data_choice_string <- "mixed"
+for (experiment in names(data_choice)[2:length(data_choice)]) {
+  for (rel_missing_i in seq_along(data_choice[[experiment]]$relative_missingness)) {
+    if (use_mvpc) {
+      data_choice[[experiment]]$graph[[rel_missing_i]] <- fit_mvpc_graph(
+        data = data_choice[[experiment]]$data[[rel_missing_i]],
+        relative_missingness = data_choice[[experiment]]$relative_missingness[[rel_missing_i]],
+        experiment = experiment,
+        plot_graph = TRUE, alpha = 0.01
+      )
+    } else {
+      data_choice[[experiment]]$graph[[rel_missing_i]] <- fit_pc_graph(
+        data = data_choice[[experiment]]$data[[rel_missing_i]],
+        relative_missingness = data_choice[[experiment]]$relative_missingness[[rel_missing_i]],
+        experiment = experiment,
+        plot_graph = TRUE, alpha = 0.01
+      )
+    }
   }
 }
 
@@ -175,12 +236,12 @@ classify_all_missingness_variables <- function(
 }
 
 # detect missingness for the full list
-for (experiment in names(multi_normal_data_list)[2:length(multi_normal_data_list)]) {
-  for (rel_missing_i in seq_along(multi_normal_data_list[[experiment]]$relative_missingness)) {
-    multi_normal_data_list[[experiment]]$detected_missingness_type[[rel_missing_i]] <- classify_all_missingness_variables(
-      graph = multi_normal_data_list[[experiment]]$graph[[rel_missing_i]],
-      all_missingness_variables = multi_normal_data_list[[experiment]]$missing, 
-      labels = colnames(multi_normal_data_list[[experiment]]$data[[rel_missing_i]])
+for (experiment in names(data_choice)[2:length(data_choice)]) {
+  for (rel_missing_i in seq_along(data_choice[[experiment]]$relative_missingness)) {
+    data_choice[[experiment]]$detected_missingness_type[[rel_missing_i]] <- classify_all_missingness_variables(
+      graph = data_choice[[experiment]]$graph[[rel_missing_i]],
+      all_missingness_variables = data_choice[[experiment]]$missing, 
+      labels = colnames(data_choice[[experiment]]$data[[rel_missing_i]])
     )
   }
 }
@@ -192,16 +253,13 @@ classification_results <- data.frame(
   correct_classification = rep(FALSE, 3 * 3)
 )
 index <- 1
-for (experiment in names(multi_normal_data_list)[2:length(multi_normal_data_list)]) {
-  for (rel_missing_i in seq_along(multi_normal_data_list[[experiment]]$relative_missingness)) {
+for (experiment in names(data_choice)[2:length(data_choice)]) {
+  for (rel_missing_i in seq_along(data_choice[[experiment]]$relative_missingness)) {
     classification_results$experiment[index] <- experiment
-    classification_results$relative_missingness[index] <- multi_normal_data_list[[experiment]]$relative_missingness[rel_missing_i]
-    classification_results$correct_classification[index] <- all(
-      sapply(multi_normal_data_list[[experiment]]$detected_missingness_type, function(detection) {
-        print(detection)
-        print(multi_normal_data_list[[experiment]]$missing_type)
-        all(detection == multi_normal_data_list[[experiment]]$missing_type)
-      }, simplify = TRUE)
+    classification_results$relative_missingness[index] <- data_choice[[experiment]]$relative_missingness[rel_missing_i]
+    classification_results$correct_classification[index] <- mean(
+      data_choice[[experiment]]$detected_missingness_type[[rel_missing_i]] ==
+        data_choice[[experiment]]$missing_type
     )
     index <- index + 1
   }
@@ -210,23 +268,28 @@ for (experiment in names(multi_normal_data_list)[2:length(multi_normal_data_list
 classification_results %>%
   mutate(
     relative_missingness = as.factor(relative_missingness),
-    correct_classification = as.character(correct_classification),
+    correct_classification = round(correct_classification, 2),
     experiment = str_to_upper(str_replace(experiment, "_", " "))
   ) %>%
   ggplot(
-    aes(x = relative_missingness, y = experiment, fill = correct_classification)
+    aes(x = relative_missingness, y = experiment, fill = correct_classification, label = correct_classification)
   ) +
   geom_tile(col = "white") +
-  scale_fill_manual(
-    values = c("FALSE" = "orange", "TRUE" = "darkgreen"),
-    name = "Classification",
-    labels = c("TRUE" = "Correct", "FALSE" = "Wrong")
-  ) +
-  labs(x = "Relative Missingness", y = "Experiment") +
+  geom_text(col = "white", size = 5) +
+  # scale_fill_manual(
+  #   values = c("FALSE" = "orange", "TRUE" = "darkgreen"),
+  #   name = "Classification",
+  #   labels = c("TRUE" = "Correct", "FALSE" = "Wrong")
+  # ) +
+  labs(x = "Relative Missingness", y = "Experiment", fill = "Correctly Classified") +
   theme_minimal()
 
 
-
+if (data_choice_string == "normal") {
+  multi_normal_data_list <- data_choice
+} else if (data_choice_string == "mixed") {
+  mixed_data_list <- data_choice
+}
 
 
 
