@@ -7,7 +7,7 @@ library(tidyverse)
 load("data/multi_normal.RData")
 load("data/mixed_data.RData")
 
-use_mvpc <- TRUE
+use_mvpc <- FALSE
 if (use_mvpc) {
   source("mvpc/CITest.R")
   source("mvpc/MissingValuePC.R")
@@ -133,10 +133,10 @@ fitted_graph <- apply_graph_fitting(
 )
 fitted_graph <- apply_graph_fitting(
   mixed_data_list,
-  experiment = "mnar",
-  rel_missingness = 0.3,
+  experiment = "mar",
+  rel_missingness = 0.6,
   alpha = 0.01,
-  type = "mvpc"
+  type = "pc"
 )
 
 # fit and visualize all at the same time
@@ -293,14 +293,88 @@ if (data_choice_string == "normal") {
   mixed_data_list <- data_choice
 }
 
+#How the graphs should look like
+#MAR
+library(ggm)
+graph_mar <- DAG(mixed_data_list$mar$data[[1]]$y ~ 
+                   mixed_data_list$mar$data[[1]]$x1
+                 + mixed_data_list$mar$data[[1]]$x2 
+                 + mixed_data_list$mar$data[[1]]$x3
+                 + mixed_data_list$mar$data[[1]]$x4 
+                 + mixed_data_list$mar$data[[1]]$x5
+                 + mixed_data_list$mar$data[[1]]$x6 
+                 + mixed_data_list$mar$data[[1]]$x7
+                 + mixed_data_list$mar$data[[1]]$x8 
+                 + mixed_data_list$mar$data[[1]]$x9,
+                 mixed_data_list$mar$data[[1]]$x1 ~
+                   mixed_data_list$mar$data[[1]]$missing_x2
+                 + mixed_data_list$mar$data[[1]]$missing_x3 
+                 + mixed_data_list$mar$data[[1]]$missing_y
+                 + mixed_data_list$mar$data[[1]]$missing_x5, 
+                 mixed_data_list$mar$data[[1]]$x4 ~ 
+                   mixed_data_list$mar$data[[1]]$missing_y,
+                 mixed_data_list$mar$data[[1]]$x7 ~ 
+                   mixed_data_list$mar$data[[1]]$missing_x6
+                 + mixed_data_list$mar$data[[1]]$missing_x8)
+
+graph_mar_object <- as(graph_mar, "graphNEL")
+graph::nodes(graph_mar_object) <- str_split(as.character(graph::nodes(graph_mar_object)),
+                                                "\\$", simplify = T)[,4]
+edges_mar <- Rgraphviz::buildEdgeList(graph_mar_object)
+igraph_obj_mar <- igraph::graph_from_graphnel(graph_mar_object)
+igraph::plot.igraph(
+  igraph_obj_mar,
+  mark.col = "blue",
+  vertex.color = "lightblue",
+  vertex.size = 20,
+  edge.arrow.size = 0.5,
+  label.cex = 12,
+)
+#Rgraphviz::plot(graph_mar_object)
+
+#MNAR
+graph_mnar <- DAG(mixed_data_list$mnar$data[[1]]$y ~ 
+                    mixed_data_list$mnar$data[[1]]$x1
+                  + mixed_data_list$mnar$data[[1]]$x2 
+                  + mixed_data_list$mnar$data[[1]]$x3
+                  + mixed_data_list$mnar$data[[1]]$x4 
+                  + mixed_data_list$mnar$data[[1]]$x5
+                  + mixed_data_list$mnar$data[[1]]$x6 
+                  + mixed_data_list$mnar$data[[1]]$x7
+                  + mixed_data_list$mnar$data[[1]]$x8 
+                  + mixed_data_list$mnar$data[[1]]$x9,
+                 mixed_data_list$mnar$data[[1]]$x1 ~
+                   mixed_data_list$mnar$data[[1]]$missing_x2
+                 + mixed_data_list$mnar$data[[1]]$missing_x5 
+                 + mixed_data_list$mnar$data[[1]]$missing_y,
+                 mixed_data_list$mnar$data[[1]]$x2 ~
+                   mixed_data_list$mnar$data[[1]]$missing_x3,
+                 mixed_data_list$mnar$data[[1]]$x4 ~
+                   mixed_data_list$mnar$data[[1]]$missing_x5,
+                 mixed_data_list$mnar$data[[1]]$x7 ~ 
+                   mixed_data_list$mnar$data[[1]]$missing_x6
+                 + mixed_data_list$mnar$data[[1]]$missing_x8 
+                 + mixed_data_list$mnar$data[[1]]$missing_y)
+
+graph_mnar_object <- as(graph_mnar, "graphNEL")
+graph::nodes(graph_mnar_object) <- str_split(as.character(graph::nodes(graph_mnar_object)),
+                                            "\\$", simplify = T)[,4]
+edges <- Rgraphviz::buildEdgeList(graph_mnar_object)
+igraph_obj <- igraph::graph_from_graphnel(graph_mnar_object)
+igraph::plot.igraph(
+  igraph_obj,
+  mark.col = "blue",
+  vertex.color = "lightblue",
+  vertex.size = 20,
+  edge.arrow.size = 0.5,
+  label.cex = 12,
+)
+#Rgraphviz::plot(graph_mar_object)
 
 
 #####################################################################
 # OLD
 #####################################################################
-
-
-
 
 
 
