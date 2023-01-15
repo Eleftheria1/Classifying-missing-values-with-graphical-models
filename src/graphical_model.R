@@ -4,126 +4,11 @@
 
 # Get required packages & data
 library(tidyverse)
+source("src/graphical_model_utils.R")
 load("data/multi_normal.RData")
 load("data/mixed_data.RData")
 
-use_mvpc <- FALSE
-if (use_mvpc) {
-  source("mvpc/CITest.R")
-  source("mvpc/MissingValuePC.R")
-}
 
-
-
-plot_graph_fit <- function(graph_fit, labels, experiment, rel_missingess) {
-  igraph_obj <- igraph::graph_from_graphnel(graph_fit@graph)
-  igraph_obj <- igraph::set.vertex.attribute(
-    igraph_obj,
-    "label",
-    value = labels
-  )
-  igraph::plot.igraph(
-    igraph_obj,
-    mark.col = "blue",
-    vertex.color = "lightblue",
-    vertex.size = 20,
-    edge.arrow.size = 0.5,
-    label.cex = 12,
-    main = paste(
-      "m-graph for experiment:", experiment,
-      "and relative missingness:", rel_missingess
-    )
-  )
-  # iplotPC(graph_fit, labels = labels)
-}
-
-fit_mvpc_graph <- function(
-    data, relative_missingness, experiment,
-    alpha = 0.01,
-    indep_test = gaussCItest.td, 
-    corr_method = gaussCItest.permc,
-    plot_graph = TRUE
-  ) {
-  mvpc_fit <- mvpc(
-    suffStat = list(data = as.data.frame(data)),
-    indepTest = indep_test,
-    corrMethod =  corr_method,
-    p = ncol(data),
-    alpha = alpha
-  )
-  if (plot_graph) {
-    plot_graph_fit(
-      mvpc_fit,
-      labels = colnames(data),
-      experiment = experiment,
-      rel_missingess = relative_missingness
-    )
-  }
-  mvpc_fit
-}
-
-fit_pc_graph <- function(
-    data, relative_missingness, experiment,
-    alpha = 0.01,
-    plot_graph = TRUE
-) {
-  filled_cor <- cor(as.data.frame(data), use = "pairwise.complete.obs")
-  # set NAs to zero according to the assumption of no self masked missingness
-  filled_cor[is.na(filled_cor)] <- 0
-  pc_fit <- pcalg::pc(
-    suffStat = list(
-      C = filled_cor,
-      n = nrow(data)
-    ),
-    indepTest = pcalg::gaussCItest,
-    p = ncol(data),
-    alpha = alpha
-  )
-  if (plot_graph) {
-    plot_graph_fit(
-      pc_fit,
-      labels = colnames(data),
-      experiment = experiment,
-      rel_missingess = relative_missingness
-    )
-  }
-  pc_fit
-}
-
-apply_graph_fitting <- function(
-  data_list,
-  experiment,
-  rel_missingness,
-  type = c("pc", "mvpc"),
-  alpha = 0.01,
-  plot_graph = TRUE
-  ) {
-  type = match.arg(type)
-  rel_missingness_index <- which(
-    data_list[[experiment]]$relative_missingness == rel_missingness
-  )
-  if (type == "mvpc") {
-    fit_mvpc_graph(
-      data = as.data.frame(data_list[[experiment]]$data[[rel_missingness_index]]),
-      relative_missingness = rel_missingness,
-      experiment = experiment,
-      plot_graph = plot_graph,
-      alpha = alpha
-    )
-  } else if (type == "pc") {
-    fit_pc_graph(
-      data = as.data.frame(data_list[[experiment]]$data[[rel_missingness_index]]),
-      relative_missingness = rel_missingness,
-      experiment = experiment,
-      plot_graph = plot_graph,
-      alpha = alpha
-    )
-  } else {
-    stop("Type not implemented")
-  }
-  
-}
-set.seed(123)
 fitted_graph <- apply_graph_fitting(
   multi_normal_data_list,
   experiment = "mnar_x2",
@@ -140,113 +25,14 @@ fitted_graph <- apply_graph_fitting(
 )
 
 # fit and visualize all at the same time
-data_choice <- multi_normal_data_list
-data_choice <- mixed_data_list
-data_choice_string <- "normal"
-data_choice_string <- "mixed"
-for (experiment in names(data_choice)[2:length(data_choice)]) {
-  for (rel_missing_i in seq_along(data_choice[[experiment]]$relative_missingness)) {
-    if (use_mvpc) {
-      data_choice[[experiment]]$graph[[rel_missing_i]] <- fit_mvpc_graph(
-        data = data_choice[[experiment]]$data[[rel_missing_i]],
-        relative_missingness = data_choice[[experiment]]$relative_missingness[[rel_missing_i]],
-        experiment = experiment,
-        plot_graph = TRUE, alpha = 0.01
-      )
-    } else {
-      data_choice[[experiment]]$graph[[rel_missing_i]] <- fit_pc_graph(
-        data = data_choice[[experiment]]$data[[rel_missing_i]],
-        relative_missingness = data_choice[[experiment]]$relative_missingness[[rel_missing_i]],
-        experiment = experiment,
-        plot_graph = TRUE, alpha = 0.01
-      )
-    }
-  }
-}
-
-classify_missingness_variable <- function(
-    graph,
-    missingness_variable,
-    all_missing_variables,
-    labels
-  ) {
-  edge_matrix <- str_split(
-    names(graph@graph@edgeData@data), "\\|", simplify = TRUE
-  )
-  edge_matrix <- plyr::mapvalues(
-    edge_matrix,
-    from = as.character(seq_along(labels)),
-    to = labels,
-    warn_missing = FALSE
-  )
-  colnames(edge_matrix) <- c("from", "to")
-  
-  missingness_ind <- paste0("missing_", missingness_variable)
-  # detect MCAR
-  # no edge to and from the missingness indicator allowed
-  if (all(missingness_ind != edge_matrix)) {
-    return("mcar")
-  }
-  
-  # detect MAR
-  edge_matrix <- edge_matrix[
-    rowSums(missingness_ind != edge_matrix) != 2,
-    ,
-    drop = FALSE
-  ]
-  n_edges <- nrow(edge_matrix)
-  for (row in 1:n_edges) {
-    if (any(edge_matrix[row, ] %in% all_missing_variables)) {
-      return("mnar")
-    }
-    if (nrow(edge_matrix) > 1) {
-      inverse_edge <- c(edge_matrix[row, 2], edge_matrix[row, 1])
-      match_inverse <- sapply(
-        seq(n_edges)[seq(n_edges) != row],
-        function(other_row) {
-          all(edge_matrix[other_row, ] == inverse_edge)
-        }
-      )
-      if (any(match_inverse)) {
-        return("mnar")
-      }
-    }
-  }
-  "mar"
-}
-
-# classify_missingness_variable(
-#   fitted_mvpc_graph,
-#   missingness_variable = "x5",
-#   all_missing_variables = c("x2", "x5"),
-#   labels = c("x1", "x2", "x3", "x4", "x5", "y", "missing_x2", "missing_x5")
-# )
-
-classify_all_missingness_variables <- function(
-    graph,
-    all_missingness_variables,
-    labels
-) {
-  sapply(all_missingness_variables, function(missingness_variable) {
-    classify_missingness_variable(
-      graph = graph,
-      missingness_variable = missingness_variable,
-      all_missing_variables = all_missingness_variables,
-      labels = labels
-    )
-  }, simplify = TRUE)
-}
+multi_normal_data_list <- fit_and_visualize_graphs(
+  multi_normal_data_list,
+  type = "pc",
+  plot_graph = FALSE
+)
 
 # detect missingness for the full list
-for (experiment in names(data_choice)[2:length(data_choice)]) {
-  for (rel_missing_i in seq_along(data_choice[[experiment]]$relative_missingness)) {
-    data_choice[[experiment]]$detected_missingness_type[[rel_missing_i]] <- classify_all_missingness_variables(
-      graph = data_choice[[experiment]]$graph[[rel_missing_i]],
-      all_missingness_variables = data_choice[[experiment]]$missing, 
-      labels = colnames(data_choice[[experiment]]$data[[rel_missing_i]])
-    )
-  }
-}
+multi_normal_data_list <- add_classification(multi_normal_data_list)
 
 
 classification_results <- data.frame(
@@ -255,13 +41,13 @@ classification_results <- data.frame(
   correct_classification = rep(FALSE, 3 * 3)
 )
 index <- 1
-for (experiment in names(data_choice)[2:length(data_choice)]) {
-  for (rel_missing_i in seq_along(data_choice[[experiment]]$relative_missingness)) {
+for (experiment in names(multi_normal_data_list)[2:length(multi_normal_data_list)]) {
+  for (rel_missing_i in seq_along(multi_normal_data_list[[experiment]]$relative_missingness)) {
     classification_results$experiment[index] <- experiment
-    classification_results$relative_missingness[index] <- data_choice[[experiment]]$relative_missingness[rel_missing_i]
+    classification_results$relative_missingness[index] <- multi_normal_data_list[[experiment]]$relative_missingness[rel_missing_i]
     classification_results$correct_classification[index] <- mean(
-      data_choice[[experiment]]$detected_missingness_type[[rel_missing_i]] ==
-        data_choice[[experiment]]$missing_type
+      multi_normal_data_list[[experiment]]$detected_missingness_type[[rel_missing_i]] ==
+        multi_normal_data_list[[experiment]]$missing_type
     )
     index <- index + 1
   }
@@ -287,12 +73,6 @@ classification_results %>%
   theme_minimal()
 
 
-if (data_choice_string == "normal") {
-  multi_normal_data_list <- data_choice
-} else if (data_choice_string == "mixed") {
-  mixed_data_list <- data_choice
-}
-
 #How the graphs should look like
 #MAR
 library(ggm)
@@ -306,16 +86,20 @@ graph_mar <- DAG(mixed_data_list$mar$data[[1]]$y ~
                  + mixed_data_list$mar$data[[1]]$x7
                  + mixed_data_list$mar$data[[1]]$x8 
                  + mixed_data_list$mar$data[[1]]$x9,
-                 mixed_data_list$mar$data[[1]]$x1 ~
-                   mixed_data_list$mar$data[[1]]$missing_x2
-                 + mixed_data_list$mar$data[[1]]$missing_x3 
-                 + mixed_data_list$mar$data[[1]]$missing_y
-                 + mixed_data_list$mar$data[[1]]$missing_x5, 
-                 mixed_data_list$mar$data[[1]]$x4 ~ 
-                   mixed_data_list$mar$data[[1]]$missing_y,
-                 mixed_data_list$mar$data[[1]]$x7 ~ 
-                   mixed_data_list$mar$data[[1]]$missing_x6
-                 + mixed_data_list$mar$data[[1]]$missing_x8)
+                   mixed_data_list$mar$data[[1]]$missing_x2 ~ 
+                   mixed_data_list$mar$data[[1]]$x1,
+                   mixed_data_list$mar$data[[1]]$missing_x3 ~ 
+                   mixed_data_list$mar$data[[1]]$x1,
+                   mixed_data_list$mar$data[[1]]$missing_y~
+                   mixed_data_list$mar$data[[1]]$x1,
+                   mixed_data_list$mar$data[[1]]$missing_x5 ~ 
+                   mixed_data_list$mar$data[[1]]$x1, 
+                   mixed_data_list$mar$data[[1]]$missing_y ~
+                   mixed_data_list$mar$data[[1]]$x4,
+                   mixed_data_list$mar$data[[1]]$missing_x6 ~ 
+                   mixed_data_list$mar$data[[1]]$x7,
+                   mixed_data_list$mar$data[[1]]$missing_x8 ~ 
+                   mixed_data_list$mar$data[[1]]$x7)
 
 graph_mar_object <- as(graph_mar, "graphNEL")
 graph::nodes(graph_mar_object) <- str_split(as.character(graph::nodes(graph_mar_object)),
@@ -343,18 +127,22 @@ graph_mnar <- DAG(mixed_data_list$mnar$data[[1]]$y ~
                   + mixed_data_list$mnar$data[[1]]$x7
                   + mixed_data_list$mnar$data[[1]]$x8 
                   + mixed_data_list$mnar$data[[1]]$x9,
-                 mixed_data_list$mnar$data[[1]]$x1 ~
-                   mixed_data_list$mnar$data[[1]]$missing_x2
-                 + mixed_data_list$mnar$data[[1]]$missing_x5 
-                 + mixed_data_list$mnar$data[[1]]$missing_y,
-                 mixed_data_list$mnar$data[[1]]$x2 ~
-                   mixed_data_list$mnar$data[[1]]$missing_x3,
-                 mixed_data_list$mnar$data[[1]]$x4 ~
-                   mixed_data_list$mnar$data[[1]]$missing_x5,
-                 mixed_data_list$mnar$data[[1]]$x7 ~ 
-                   mixed_data_list$mnar$data[[1]]$missing_x6
-                 + mixed_data_list$mnar$data[[1]]$missing_x8 
-                 + mixed_data_list$mnar$data[[1]]$missing_y)
+                   mixed_data_list$mnar$data[[1]]$missing_x2 ~ 
+                   mixed_data_list$mnar$data[[1]]$x1,
+                   mixed_data_list$mnar$data[[1]]$missing_x5 ~ 
+                   mixed_data_list$mnar$data[[1]]$x1,
+                   mixed_data_list$mnar$data[[1]]$missing_y ~ 
+                   mixed_data_list$mnar$data[[1]]$x1,
+                   mixed_data_list$mnar$data[[1]]$missing_x3 ~ 
+                   mixed_data_list$mnar$data[[1]]$x2,
+                   mixed_data_list$mnar$data[[1]]$missing_x5 ~ 
+                   mixed_data_list$mnar$data[[1]]$x4,
+                   mixed_data_list$mnar$data[[1]]$missing_x6 ~ 
+                   mixed_data_list$mnar$data[[1]]$x7,
+                   mixed_data_list$mnar$data[[1]]$missing_x8 ~ 
+                   mixed_data_list$mnar$data[[1]]$x7,
+                   mixed_data_list$mnar$data[[1]]$missing_y ~ 
+                   mixed_data_list$mnar$data[[1]]$x7)
 
 graph_mnar_object <- as(graph_mnar, "graphNEL")
 graph::nodes(graph_mnar_object) <- str_split(as.character(graph::nodes(graph_mnar_object)),
