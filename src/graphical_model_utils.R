@@ -164,6 +164,7 @@ classify_missingness_variable <- function(
     to = labels,
     warn_missing = FALSE
   )
+  if (purrr::is_empty(edge_matrix)) return("mcar")
   colnames(edge_matrix) <- c("from", "to")
   
   missingness_ind <- paste0("missing_", missingness_variable)

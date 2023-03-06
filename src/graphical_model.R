@@ -74,11 +74,16 @@ classification_results %>%
 
 
 #How the graphs should look like
+# Graph without missingness
+complete_data <- as.data.frame(mixed_data_list$raw[[1]])[,-1]
+suffStat <- list(C = cor(complete_data), n = nrow(complete_data))
+pc_algorithm <- pc(suffStat, indepTest = gaussCItest,
+                   p = ncol(complete_data), alpha = 0.01)
+plot(pc_algorithm, main = "")
 #MAR
 library(ggm)
 graph_mar <- DAG(mixed_data_list$mar$data[[1]]$y ~ 
                    mixed_data_list$mar$data[[1]]$x1
-                 + mixed_data_list$mar$data[[1]]$x2 
                  + mixed_data_list$mar$data[[1]]$x3
                  + mixed_data_list$mar$data[[1]]$x4 
                  + mixed_data_list$mar$data[[1]]$x5
@@ -86,6 +91,12 @@ graph_mar <- DAG(mixed_data_list$mar$data[[1]]$y ~
                  + mixed_data_list$mar$data[[1]]$x7
                  + mixed_data_list$mar$data[[1]]$x8 
                  + mixed_data_list$mar$data[[1]]$x9,
+                   mixed_data_list$mar$data[[1]]$x3 ~
+                   mixed_data_list$mar$data[[1]]$x2,
+                   mixed_data_list$mar$data[[1]]$x4 ~
+                   mixed_data_list$mar$data[[1]]$x3,
+                   mixed_data_list$mar$data[[1]]$x8 ~
+                   mixed_data_list$mar$data[[1]]$x7,
                    mixed_data_list$mar$data[[1]]$missing_x2 ~ 
                    mixed_data_list$mar$data[[1]]$x1,
                    mixed_data_list$mar$data[[1]]$missing_x3 ~ 
@@ -119,7 +130,6 @@ igraph::plot.igraph(
 #MNAR
 graph_mnar <- DAG(mixed_data_list$mnar$data[[1]]$y ~ 
                     mixed_data_list$mnar$data[[1]]$x1
-                  + mixed_data_list$mnar$data[[1]]$x2 
                   + mixed_data_list$mnar$data[[1]]$x3
                   + mixed_data_list$mnar$data[[1]]$x4 
                   + mixed_data_list$mnar$data[[1]]$x5
@@ -127,6 +137,12 @@ graph_mnar <- DAG(mixed_data_list$mnar$data[[1]]$y ~
                   + mixed_data_list$mnar$data[[1]]$x7
                   + mixed_data_list$mnar$data[[1]]$x8 
                   + mixed_data_list$mnar$data[[1]]$x9,
+                  mixed_data_list$mnar$data[[1]]$x3 ~
+                    mixed_data_list$mnar$data[[1]]$x2,
+                  mixed_data_list$mnar$data[[1]]$x4 ~
+                    mixed_data_list$mnar$data[[1]]$x3,
+                  mixed_data_list$mnar$data[[1]]$x8 ~
+                    mixed_data_list$mnar$data[[1]]$x7,
                    mixed_data_list$mnar$data[[1]]$missing_x2 ~ 
                    mixed_data_list$mnar$data[[1]]$x1,
                    mixed_data_list$mnar$data[[1]]$missing_x5 ~ 
@@ -179,7 +195,7 @@ library(ggm)
 library(pcalg)
 
 ?ggm
-complete_data <- as.data.frame(multi_normal_data_list$raw[[1]])[,-1]
+complete_data <- as.data.frame(mixed_data_list$raw[[1]])[,-1]
 
 graph <- DAG(complete_data$y ~ complete_data$x1 + complete_data$x2 + 
                       complete_data$x3 + complete_data$x4)
@@ -253,43 +269,10 @@ pc_algorithm_mcar <- pc(suffStat_mcar, indepTest = gaussCItest,
 
 plot(pc_algorithm_mcar, main = "")
 
-library(gRim)
-
-# 
-# library(gRbase)
-# data(milkcomp1, package='gRbase')
-# SS <- CGstats(milkcomp1, varnames=c("treat","fat","protein",
-#                                     "lactose"))
-# SS
-# can.parms<-CGstats2mmodParms(SS,type="ghk")
-# 
-# milkmod <- mmod(~treat*fat*protein + protein*lactose, data=milkcomp1)
-# str(milkmod)
-# 
-# plot(milkmod)
-# 
-# glist <- ~treat:fat:protein+protein:lactose
-# milk <- mmod(glist, data=milkcomp1)
-# summary(milk)
-# coef(milk, type="ghk")
-# mm <- mmod(~.^., data=milkcomp1)
-# mm2 <- stepwise(mm, k=log(nrow(milkcomp1)), details=0)
-# plot(mm2)
-# 
-# complete_data$missing <- as.factor(complete_data$missing)
-# mm <- mmod(~.^., data=complete_data)
-# mm2 <- stepwise(mm, k=log(nrow(complete_data)), details=0)
-# plot(mm2)
-# 
-# missing_data$missing <- as.factor(missing_data$missing)
-# mm <- mmod(~.^., data=missing_data)
-# mm2 <- stepwise(mm, k=log(nrow(missing_data)), details=0)
-# plot(mm2)
 
 
-
-
-
+library(devtools)
+install_github("OmegaPetrazzini/NAsImpute")
 
 
 

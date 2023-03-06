@@ -66,9 +66,9 @@ evaluate_simulated_classification <- function(
 
 test <- evaluate_simulated_classification(
   data_list_type = "mixed",
-  dataset_size = 1000,
+  dataset_size = 100,
   replications = 100,
-  type = "mvpc"
+  type = "pc"
 )
 
 test %>%
@@ -96,3 +96,10 @@ test %>%
   labs(x = "Relative Missingness", y = "", fill = "Correctly Classified") +
   facet_wrap(~experiment, scales = "free") +
   theme_minimal()
+
+save(
+   test,
+   file = paste0(here::here(), "/data/mvpc_results_normal_500_100.RData")
+ )
+
+load("data/mvpc_results_1000_100.RData")
