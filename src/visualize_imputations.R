@@ -44,68 +44,112 @@ ggplot_compare_density <- function(
           amelia_obj$imputations, 
           FUN = function(df) {
             df %>%
-              # filter(amelia_obj$missMatrix[, var]) %>% 
               pull(var)
           },
           FUN.VALUE = numeric(
             length = dim(amelia_obj$missMatrix)[1]
-            # length = sum(amelia_obj$missMatrix[, var])
           )
         )
       )
     )
   )
   
-  ggplot() +
-    geom_line(
-      data = data.frame(
-        x = density(data_list$raw$data[[1]][[var]])$x,
-        y = density(data_list$raw$data[[1]][[var]])$y
-      ),
-      aes(x = x, y = y, col = "true_vals", linetype = "true_vals"),
-      linewidth = 0.8,
-      alpha = 0.7
-    ) +
-    geom_line(
-      data = data.frame(
-        x = density(plot_observed$observed)$x,
-        y = density(plot_observed$observed)$y
-      ),
-      aes(x = x, y = y, col = "observed", linetype = "observed"),
-      linewidth = 0.8,
-      alpha = 1
-    ) +
-    geom_line(
-      data = data.frame(
-        x = density(plot_missing$missing_means)$x,
-        y = density(plot_missing$missing_means)$y
-      ),
-      aes(x = x, y = y, col = "imputed", linetype = "imputed"),
-      linewidth = 0.8,
-      alpha = 1
-    ) +
-    expand_limits(x = expand_limits) +
-    labs(
-      x = paste(var, "- Fraction Missing:", round(rel_missingness, 3)),
-      y = "Relative Density",
-      title = paste("Observed, imputed and true distribution of", var)
-    ) +
-    scale_color_manual(
-      values = c("observed" = "#33a3f2", "imputed" = "#eb4b3d", "true_vals" = "#4b4c4d"),
-      name = "",
-      labels = c("Averaged Imputations", "Observed Values", "True Values")
-    ) +
-    scale_linetype_manual(
-      values = c("observed" = "solid", "imputed" = "solid", "true_vals" = "longdash"),
-      name = "",
-      labels = c("Averaged Imputations", "Observed Values", "True Values")
-    ) +
-    theme_minimal() +
-    theme(legend.position = "bottom")
+  if (nominal) {
+    plot_observed %>%
+      group_by(observed) %>%
+      summarise(count = n()) %>% 
+      ungroup() %>%
+      mutate(count = count/sum(count)) %>%
+      rename(values = "observed", rel_count = "count") %>%
+      mutate(type = "observed") %>%
+      bind_rows(
+        plot_missing %>%
+          group_by(missing_means) %>%
+          summarise(count = n()) %>% 
+          ungroup() %>%
+          mutate(count = count/sum(count)) %>%
+          rename(values = "missing_means", rel_count = "count") %>%
+          mutate(type = "imputed")
+      ) %>%
+      bind_rows(
+        tibble(true_vals =  data_list$raw$data[[1]][[var]]) %>%
+          group_by(true_vals) %>%
+          summarise(count = n()) %>% 
+          ungroup() %>%
+          mutate(count = count/sum(count)) %>%
+          rename(values = "true_vals", rel_count = "count") %>%
+          mutate(type = "true_vals")
+      ) %>%
+      mutate(values = factor(values)) %>%
+      ggplot() +
+      geom_col(
+        aes(x = values, y = rel_count, fill = type),
+        position = "dodge"
+      ) +
+      labs(
+        x = paste(var, "- Fraction Missing:", round(rel_missingness, 3)),
+        y = "Relative Frequency",
+        title = paste("Observed, imputed and true frequencies of", var)
+      ) +
+      scale_fill_manual(
+        values = c("observed" = "#33a3f2", "imputed" = "#eb4b3d", "true_vals" = "#ababab"),
+        name = "",
+        labels = c("Majority Imputations", "Observed Values", "True Values")
+      ) +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+  } else {
+    ggplot() +
+      geom_line(
+        data = data.frame(
+          x = density(data_list$raw$data[[1]][[var]])$x,
+          y = density(data_list$raw$data[[1]][[var]])$y
+        ),
+        aes(x = x, y = y, col = "true_vals", linetype = "true_vals"),
+        linewidth = 0.8,
+        alpha = 0.7
+      ) +
+      geom_line(
+        data = data.frame(
+          x = density(plot_observed$observed)$x,
+          y = density(plot_observed$observed)$y
+        ),
+        aes(x = x, y = y, col = "observed", linetype = "observed"),
+        linewidth = 0.8,
+        alpha = 1
+      ) +
+      geom_line(
+        data = data.frame(
+          x = density(plot_missing$missing_means)$x,
+          y = density(plot_missing$missing_means)$y
+        ),
+        aes(x = x, y = y, col = "imputed", linetype = "imputed"),
+        linewidth = 0.8,
+        alpha = 1
+      ) +
+      expand_limits(x = expand_limits) +
+      labs(
+        x = paste(var, "- Fraction Missing:", round(rel_missingness, 3)),
+        y = "Relative Density",
+        title = paste("Observed, imputed and true distribution of", var)
+      ) +
+      scale_color_manual(
+        values = c("observed" = "#33a3f2", "imputed" = "#eb4b3d", "true_vals" = "#4b4c4d"),
+        name = "",
+        labels = c("Averaged Imputations", "Observed Values", "True Values")
+      ) +
+      scale_linetype_manual(
+        values = c("observed" = "solid", "imputed" = "solid", "true_vals" = "longdash"),
+        name = "",
+        labels = c("Averaged Imputations", "Observed Values", "True Values")
+      ) +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+  }
 }
 ggplot_compare_density(imputed_mixed_data_list$mar$amelia_obj[[3]], mixed_data_list, var = "x2")
 
-ggplot_compare_density(imputed_norm_mixed_data_list2$mar$amelia_obj[[3]], mixed_data_list, var = "x2")
+ggplot_compare_density(imputed_norm_mixed_data_list2$mnar$amelia_obj[[2]], mixed_data_list, var = "x6", nominal = T)
 
 add_all_compare_density_plots <- function(
     imputed_data_list,
@@ -141,7 +185,7 @@ vizualized_mixed_data_list <- add_all_compare_density_plots(
   nominal_features = c("x6", "x7", "x8", "x9")
 )
 vizualized_mixed_data_list$mar$dens_plots$x8[[2]]
-vizualized_mixed_data_list$mar$dens_plots$x2[[1]]
+vizualized_mixed_data_list$mar$dens_plots$x2[[2]]
 
 #################################################################################
 # "-2 * x1 + 3 * x2 - 0.5 *x3 + 0.5 * x4 + 1.5 * x5 + x6 - 1.5 * x7 + 1.5 * x8 + 2 * x9"

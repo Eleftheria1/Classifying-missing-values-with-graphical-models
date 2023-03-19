@@ -324,7 +324,7 @@ simulate_mixed_dataset <- function(
   )
   mixed_data_def <- defData(
     mixed_data_def,
-    varname = "x2", dist = "beta", formula = 0.5, variance = 2
+    varname = "x2", dist = "beta", formula = 0.75, variance = 3
   )
   mixed_data_def <- defData(
     mixed_data_def,

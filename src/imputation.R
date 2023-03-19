@@ -2,6 +2,7 @@ library(Amelia)
 library(clarify)
 library(tidyverse)
 library(mice)
+library(bestNormalize)
 
 base_datasets <- c("mixed_data.RData", "multi_normal.RData")
 all_data_files <- list.files(path = "data")
@@ -92,6 +93,7 @@ imputed_norm_mixed_data_list <- overall_impute(
   nominals = c("x6", "x7", "x8", "x9"),
   sqrts = c("x3")
 ) 
+
 
 imputed_norm_mixed_data_list2 <- retransform_columns(imputed_norm_mixed_data_list)
 

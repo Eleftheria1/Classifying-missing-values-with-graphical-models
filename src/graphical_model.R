@@ -8,21 +8,25 @@ source("src/graphical_model_utils.R")
 load("data/multi_normal.RData")
 load("data/mixed_data.RData")
 
-
+# VIsualize the individual graphs
 fitted_graph <- apply_graph_fitting(
   multi_normal_data_list,
   experiment = "mnar_x2",
   rel_missingness = 0.3,
   alpha = 0.01,
-  type = "mvpc"
+  type = "mvpc",
+  plot_graph = TRUE
 )
 fitted_graph <- apply_graph_fitting(
   mixed_data_list,
-  experiment = "mar",
+  experiment = "mnar",
   rel_missingness = 0.6,
   alpha = 0.01,
-  type = "pc"
+  type = "pc",
+  plot_graph = TRUE
 )
+
+#-------------------------------------------------------------
 
 # fit and visualize all at the same time
 multi_normal_data_list <- fit_and_visualize_graphs(
