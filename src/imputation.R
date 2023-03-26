@@ -27,60 +27,6 @@ overall_impute <- function(data_list, nominals = NULL, m = 5, p2s = 0, sqrts = N
   data_list
 }
 
-
-normalize_1col <- function(df, col = "x2") {
-  bn_obj <- bestNormalize(df[[col]], warn = TRUE, standardize = FALSE)
-  df[[col]] <- bn_obj$x.t
-  list(bn_obj, df)
-}
-
-normalize_columns <- function(data_list, columns = c("x2")) {
-  for (exp in names(data_list)[-1]) {
-    for (i in seq_along(data_list[[exp]]$data)) {
-      data_list[[exp]]$bn_objects[[i]] = list()
-      for (col_index in seq_along(columns)) {
-        tmp_list <- normalize_1col(
-          data_list[[exp]]$data[[i]], col = columns[col_index]
-        )
-        data_list[[exp]]$bn_objects[[i]] <- append(
-          data_list[[exp]]$bn_objects[[i]], list(tmp_list[[1]])
-        )
-        names(data_list[[exp]]$bn_objects[[i]])[col_index] <- columns[col_index]
-        data_list[[exp]]$data[[i]] <- tmp_list[[2]]
-      }
-    }
-  }
-  data_list
-}
-
-normalized_mixed_data_list <- normalize_columns(mixed_data_list)
-
-retransform_1col <- function(df, bn_obj, coln="x2") {
-  df[[coln]] <- bestNormalize:::predict.bestNormalize(
-    bn_obj[[coln]], newdata = df[[coln]], inverse = TRUE
-  )
-  df
-}
-
-retransform_columns <- function(imputed_data_list, columns = c("x2")) {
-  for (exp in names(imputed_data_list)[-1]) {
-    for (i in seq_along(imputed_data_list[[exp]]$data)) {
-      for (imp_index in seq_along(imputed_data_list[[exp]]$amelia_obj[[i]]$imputations)) {
-        for (col_index in seq_along(columns)) {
-          imputed_data_list[[exp]]$amelia_obj[[i]]$imputations[[imp_index]] <- retransform_1col(
-            imputed_data_list[[exp]]$amelia_obj[[i]]$imputations[[imp_index]],
-            imputed_data_list[[exp]]$bn_objects[[i]][columns[col_index]],
-            coln = columns[col_index]
-          )
-        }
-      }
-    }
-  }
-  imputed_data_list
-}
-
-
-
 set.seed(123)
 imputed_mixed_data_list <- overall_impute(
   data_list = mixed_data_list,
@@ -88,28 +34,16 @@ imputed_mixed_data_list <- overall_impute(
   sqrts = c("x3")
 ) 
 
-imputed_norm_mixed_data_list <- overall_impute(
-  data_list = normalized_mixed_data_list,
-  nominals = c("x6", "x7", "x8", "x9"),
-  sqrts = c("x3")
-) 
-
-
-imputed_norm_mixed_data_list2 <- retransform_columns(imputed_norm_mixed_data_list)
-
-plot(density(imputed_norm_mixed_data_list$mar$amelia_obj[[1]]$imputations$imp3$x2))
-plot(density(imputed_norm_mixed_data_list2$mar$amelia_obj[[1]]$imputations$imp3$x2))
+#save(imputed_mixed_data_list, file = "data/imputed_mixed_data.RData")
 
 imputed_normal_data_list <- overall_impute(
   data_list = multi_normal_data_list
 )
 
-
-
 factorize_columns <- function(df, columns = c("x6")) {
   for (col in columns) {
     if (length(unique(df[[col]])) > 1) {
-      df[[col]] <- as.factor(df[[col]])
+      df[[col]] <- factor(df[[col]])
     }
   }
   df
@@ -129,6 +63,7 @@ evaluate_parameters <- function(
     formula = form,
     data = factorize_columns(imputed_data_list$raw$data[[1]])
   )
+  print(summary(model_raw))
   raw_results <- model_raw$coefficients %>%
     as_tibble() %>%
     select("est" = "value") %>%
@@ -210,6 +145,7 @@ evaluate_parameters <- function(
 }
 
 
+
 mixed_data_params <- evaluate_parameters(
   imputed_data_list = imputed_mixed_data_list,
   form = as.formula("y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9")
@@ -220,8 +156,68 @@ mixed_data_params <- evaluate_parameters(
 
 
 
+# Optional Normalization -------------------------------------------------
+
+# sieht aus als ob die normalisierungs nichts bringt weder
+# bei kerneldensity noch bei koeffizienten
 
 
+normalize_1col <- function(df, col = "x2") {
+  bn_obj <- bestNormalize(df[[col]], warn = TRUE, standardize = FALSE)
+  df[[col]] <- bn_obj$x.t
+  list(bn_obj, df)
+}
 
+normalize_columns <- function(data_list, columns = c("x2")) {
+  for (exp in names(data_list)[-1]) {
+    for (i in seq_along(data_list[[exp]]$data)) {
+      data_list[[exp]]$bn_objects[[i]] = list()
+      for (col_index in seq_along(columns)) {
+        tmp_list <- normalize_1col(
+          data_list[[exp]]$data[[i]], col = columns[col_index]
+        )
+        data_list[[exp]]$bn_objects[[i]] <- append(
+          data_list[[exp]]$bn_objects[[i]], list(tmp_list[[1]])
+        )
+        names(data_list[[exp]]$bn_objects[[i]])[col_index] <- columns[col_index]
+        data_list[[exp]]$data[[i]] <- tmp_list[[2]]
+      }
+    }
+  }
+  data_list
+}
 
+# normalized_mixed_data_list <- normalize_columns(mixed_data_list)
+
+# imputed_norm_mixed_data_list <- overall_impute(
+#   data_list = normalized_mixed_data_list,
+#   nominals = c("x6", "x7", "x8", "x9"),
+#   sqrts = c("x3")
+# ) 
+
+retransform_1col <- function(df, bn_obj, coln="x2") {
+  df[[coln]] <- bestNormalize:::predict.bestNormalize(
+    bn_obj[[coln]], newdata = df[[coln]], inverse = TRUE
+  )
+  df
+}
+
+retransform_columns <- function(imputed_data_list, columns = c("x2")) {
+  for (exp in names(imputed_data_list)[-1]) {
+    for (i in seq_along(imputed_data_list[[exp]]$data)) {
+      for (imp_index in seq_along(imputed_data_list[[exp]]$amelia_obj[[i]]$imputations)) {
+        for (col_index in seq_along(columns)) {
+          imputed_data_list[[exp]]$amelia_obj[[i]]$imputations[[imp_index]] <- retransform_1col(
+            imputed_data_list[[exp]]$amelia_obj[[i]]$imputations[[imp_index]],
+            imputed_data_list[[exp]]$bn_objects[[i]][columns[col_index]],
+            coln = columns[col_index]
+          )
+        }
+      }
+    }
+  }
+  imputed_data_list
+}
+
+# imputed_norm_mixed_data_list <- retransform_columns(imputed_norm_mixed_data_list)
 

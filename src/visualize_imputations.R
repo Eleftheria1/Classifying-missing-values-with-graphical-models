@@ -87,7 +87,7 @@ ggplot_compare_density <- function(
         position = "dodge"
       ) +
       labs(
-        x = paste(var, "- Fraction Missing:", round(rel_missingness, 3)),
+        x = paste(var, "- Fraction Missing:", round(rel_missingness, 1)),
         y = "Relative Frequency",
         title = paste("Observed, imputed and true frequencies of", var)
       ) +
@@ -149,7 +149,7 @@ ggplot_compare_density <- function(
 }
 ggplot_compare_density(imputed_mixed_data_list$mar$amelia_obj[[3]], mixed_data_list, var = "x2")
 
-ggplot_compare_density(imputed_norm_mixed_data_list2$mnar$amelia_obj[[2]], mixed_data_list, var = "x6", nominal = T)
+ggplot_compare_density(imputed_norm_mixed_data_list2$mar$amelia_obj[[3]], mixed_data_list, var = "x2", nominal = F)
 
 add_all_compare_density_plots <- function(
     imputed_data_list,
@@ -180,12 +180,14 @@ if ("x10" %in% imputed_mixed_data_list$mcar$missing) {
 vizualized_multi_normal_list <- add_all_compare_density_plots(
   imputed_normal_data_list
 )
-vizualized_mixed_data_list <- add_all_compare_density_plots(
+visualized_mixed_data_list <- add_all_compare_density_plots(
   imputed_mixed_data_list,
   nominal_features = c("x6", "x7", "x8", "x9")
 )
-vizualized_mixed_data_list$mar$dens_plots$x8[[2]]
-vizualized_mixed_data_list$mar$dens_plots$x2[[2]]
+visualized_mixed_data_list$mar$dens_plots$x8[[2]]
+visualized_mixed_data_list$mar$dens_plots$x2[[2]]
+
+# save(visualized_mixed_data_list, file = "data/visualized_mixed_data.RData")
 
 #################################################################################
 # "-2 * x1 + 3 * x2 - 0.5 *x3 + 0.5 * x4 + 1.5 * x5 + x6 - 1.5 * x7 + 1.5 * x8 + 2 * x9"
@@ -265,4 +267,4 @@ visualize_parameters <- function(
   #theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 }
 
-visualize_parameters(mixed_data_params$mcar[[2]])
+visualize_parameters(mixed_data_params$mnar[[1]])
