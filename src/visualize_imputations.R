@@ -1,3 +1,5 @@
+load("data/imputed_mixed_data.RData")
+
 
 # Function to compare univariate densities of variables
 ggplot_compare_density <- function(
@@ -185,9 +187,9 @@ visualized_mixed_data_list <- add_all_compare_density_plots(
   nominal_features = c("x6", "x7", "x8", "x9")
 )
 visualized_mixed_data_list$mar$dens_plots$x8[[2]]
-visualized_mixed_data_list$mar$dens_plots$x2[[2]]
+visualized_mixed_data_list$mar$dens_plots$x1[[3]]
 
-# save(visualized_mixed_data_list, file = "data/visualized_mixed_data.RData")
+#save(visualized_mixed_data_list, file = "data/visualized_mixed_data.RData")
 
 #################################################################################
 # "-2 * x1 + 3 * x2 - 0.5 *x3 + 0.5 * x4 + 1.5 * x5 + x6 - 1.5 * x7 + 1.5 * x8 + 2 * x9"

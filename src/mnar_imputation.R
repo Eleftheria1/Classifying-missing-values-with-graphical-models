@@ -11,7 +11,7 @@ impute_one_column_knn <- function(
   if ("k" %in% names(extra_args)) {
     k = extra_args[["k"]]
   } else {
-    k = 10
+    k = 2
   }
   if ("kernel" %in% names(extra_args)) {
     kernel = extra_args[["kernel"]]
@@ -91,6 +91,12 @@ knn_density_comparison_plots <- function(knn_imputed_data_list, col_name, rel_mi
     theme(plot.subtitle = ggtext::element_markdown(size = 9))
 }
 
+#scheint für kleine k besser zu funktionieren
+# x4 als input funktioniert nicht weil x4 nicht missing ist!
+# funktioniert nicht für categorical variablen aber bei categorical lieber 
+# kreuztabelle machen weil man bei Balken e nichts sieht
+# x1 und x7 sind mcar. imputation dazu ist amelia sieht aber anders aus als rote linie
+# weil wir erste imputation nehmen und nicht mitteln
 knn_density_comparison_plots(
   knn_imputed_data_list = knn_imputed_mixed_data_list,
   col_name = "x2",

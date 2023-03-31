@@ -5,7 +5,7 @@ library(tidyverse)
 source(paste0(here::here(), "/src/data_simulation_utils.R"))
 source("src/graphical_model_utils.R")
 library(progress)
-
+set.seed(123)
 
 evaluate_simulated_classification <- function(
   data_list_type = c("normal", "mixed"),
@@ -66,8 +66,7 @@ evaluate_simulated_classification <- function(
 
 test <- evaluate_simulated_classification(
   data_list_type = "mixed",
-  dataset_size = 1000,
-  replications = 100,
+  dataset_size = 500,
   type = "mvpc"
 )
 
@@ -99,7 +98,7 @@ test %>%
 
 save(
    test,
-   file = paste0(here::here(), "/data/mvpc_results_1000_100.RData")
+   file = paste0(here::here(), "/data/mvpc_results_mixed_500n.RData")
  )
 
-load("data/pc_results_1000_100.RData")
+
