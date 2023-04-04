@@ -11,18 +11,18 @@ load("data/mixed_data.RData")
 # VIsualize the individual graphs
 fitted_graph <- apply_graph_fitting(
   multi_normal_data_list,
-  experiment = "mnar_x2",
-  rel_missingness = 0.3,
+  experiment = "mar_x2",
+  rel_missingness = 0.1,
   alpha = 0.01,
   type = "mvpc",
   plot_graph = TRUE
 )
 fitted_graph <- apply_graph_fitting(
   mixed_data_list,
-  experiment = "mnar",
-  rel_missingness = 0.6,
+  experiment = "mcar",
+  rel_missingness = 0.1,
   alpha = 0.01,
-  type = "pc",
+  type = "mvpc",
   plot_graph = TRUE
 )
 
@@ -180,103 +180,7 @@ igraph::plot.igraph(
 #Rgraphviz::plot(graph_mar_object)
 
 
-#####################################################################
-# OLD
-#####################################################################
 
-
-
-#BiocManager::install("graph")
-#BiocManager::install("RBGL")
-#BiocManager::install("Rgraphviz")
-library(graph)
-library(igraph)
-library(gRbase)
-library(Rgraphviz)
-library(RBGL)
-
-library(ggm)
-library(pcalg)
-
-?ggm
-complete_data <- as.data.frame(mixed_data_list$raw[[1]])[,-1]
-
-graph <- DAG(complete_data$y ~ complete_data$x1 + complete_data$x2 + 
-                      complete_data$x3 + complete_data$x4)
-plot(as(graph, "graphNEL"))
-graph_object <- as(graph, "graphNEL")
-nodes(graph_object) <- as.character(nodes(graph_object))
-edges <- buildEdgeList(graph_object)
-plot(graph_object)
-#fitted_graph <- fitDag(graph_object, S.carc)
-
-
-
-
-
-
-suffStat <- list(C = cor(complete_data), n = nrow(complete_data))
-pc_algorithm <- pc(suffStat, indepTest = gaussCItest,
-             p = ncol(complete_data), alpha = 0.01)
-stopifnot(require(Rgraphviz))
-plot(graph_object, main = "") ; plot(pc_algorithm, main = "")
-
-
-missing_data <- as.data.frame(multi_normal_data_list$mar_x2[[1]][[2]])
-correlation <- cor(missing_data)
-cor_complete_cases_only <- cor(na.omit(missing_data))
-correlation[2,] <- cor_complete_cases_only[2,]
-correlation[,2] <- cor_complete_cases_only[,2]
-suffStat_missing <- list(C = unname(correlation), n = nrow(missing_data[, 1:5]), data = missing_data[, 1:5])
-pc_algorithm_missing <- pc(suffStat_missing, indepTest = gaussCItest,
-                   p = ncol(missing_data), alpha = 0.01)
-plot(pc_algorithm_missing, main = "")
-suff_missing <- list(data = missing_data)
-
-mvpc_mar <- mvpc(suffStat = suff_missing, indepTest =  gaussCItest.td,
-                 corrMethod =  gaussCItest.permc,
-                 p = 7, alpha = 0.01)
-plot(mvpc_mar)
-
-mnar_data <- as.data.frame(multi_normal_data_list$mnar_x2$data[[1]])
-suff_missing_mnar <- list(data = mnar_data)
-mvpc_mnar <- mvpc(suffStat = suff_missing_mnar, indepTest =  gaussCItest.td,
-                 corrMethod =  gaussCItest.permc,
-                 p = 7, alpha = 0.01)
-plot(mvpc_mnar)
-
-
-correlation_mnar <- cor(mnar_data)
-cor_complete_cases_only_mnar <- cor(na.omit(mnar_data))
-correlation_mnar[2,] <- cor_complete_cases_only_mnar[2,]
-correlation_mnar[,2] <- cor_complete_cases_only_mnar[,2]
-correlation_mnar[5,] <- cor_complete_cases_only_mnar[5,]
-correlation_mnar[,5] <- cor_complete_cases_only_mnar[,5]
-a <- mnar_data %>% select(-x2)
-a_cor <- cor(na.omit(a))
-correlation_mnar[5,7] <- a_cor[4,6]
-correlation_mnar[7,5] <- a_cor[6,4]
-
-set.seed(123)
-suffStat_mnar <- list(C = correlation_mnar, n = nrow(mnar_data))
-suffStat_mnar <- list(C = cor(mnar_data, use = "pairwise.complete.obs"), n = nrow(mnar_data))
-pc_algorithm_mnar <- pc(suffStat_mnar, indepTest = gaussCItest,
-                           p = ncol(mnar_data), alpha = 0.01)
-
-
-plot(pc_algorithm_mnar, main = "")
-
-mcar_data <- as.data.frame(multi_normal_data_list$mcar_x2[[1]][[1]])
-suffStat_mcar <- list(C = cor(mcar_data), n = nrow(mcar_data))
-pc_algorithm_mcar <- pc(suffStat_mcar, indepTest = gaussCItest,
-                        p = ncol(mcar_data), alpha = 0.01)
-
-plot(pc_algorithm_mcar, main = "")
-
-
-
-library(devtools)
-install_github("OmegaPetrazzini/NAsImpute")
 
 
 
