@@ -351,21 +351,21 @@ visualize_parameters <- function(
 # visualize
 
 # selbe diagnostische plots
-knn_density_comparison_plots <- function(knn_imputed_data_list, col_name, rel_miss) {
+knn_density_comparison_plots <- function(knn_imputed_data_list, col_name, rel_miss, exp = "mnar") {
   rel_miss_ind <- which(
-    rel_miss == knn_imputed_data_list$mnar$relative_missingness
+    rel_miss == knn_imputed_data_list[[exp]]$relative_missingness
   )
   if (length(rel_miss_ind) == 0) {
     stop("This Relative missingness does not exist.")
   }
-  knn_imputed_data_list$mnar$dens_plots[[col_name]][[rel_miss_ind]] +
+  knn_imputed_data_list[[exp]]$dens_plots[[col_name]][[rel_miss_ind]] +
     geom_line(
       data = data.frame(
         x = density(
-          knn_imputed_data_list$mnar$knn_obj[[rel_miss_ind]][[col_name]]
+          knn_imputed_data_list[[exp]]$knn_obj[[rel_miss_ind]][[col_name]]
         )$x,
         y = density(
-          knn_imputed_data_list$mnar$knn_obj[[rel_miss_ind]][[col_name]]
+          knn_imputed_data_list[[exp]]$knn_obj[[rel_miss_ind]][[col_name]]
         )$y
       ),
       aes(x = x, y = y), col = "#f0b74d", linetype = "solid",
@@ -382,22 +382,89 @@ knn_density_comparison_plots <- function(knn_imputed_data_list, col_name, rel_mi
     theme(plot.subtitle = ggtext::element_markdown(size = 9))
 }
 
+
+
 visualize_parameters_knn <- function(
-    parameter_result_df
+    parameter_results,
+    classified_data_list,
+    experiment = "mnar",
+    rel_missingness = 0.3,
+    estimated_missingness = TRUE,
+    complete_case_threshold = 5
 ) {
+  rel_missingness_index <- which(
+    classified_data_list[[experiment]]$relative_missingness == rel_missingness
+  )
+  parameter_result_df <- parameter_results[[experiment]][[rel_missingness_index]]
+  complete_case_note <- ""
+  if (min(parameter_result_df$complete_cases) <= complete_case_threshold) {
+    parameter_result_df <- parameter_result_df %>%
+      filter(type != "complete")
+    complete_case_note <- paste("Due to only", min(parameter_result_df$complete_cases),
+        "complete cases the corresponding estimates are not displayed.")
+    cat(complete_case_note)
+  } else {
+    complete_case_note <- ""
+  }
+  
+  if (estimated_missingness) {
+    treated_mnar <- str_flatten(
+      names(
+        classified_data_list[[experiment]]$detected_missingness_type[[rel_missingness_index]][
+          classified_data_list[[experiment]]$detected_missingness_type[[rel_missingness_index]] == "mnar"
+        ]
+      ),
+      collapse = ","
+    )
+  } else {
+    treated_mnar <- str_flatten(
+      names(
+        classified_data_list[[experiment]]$missing_type[
+          classified_data_list[[experiment]]$missing_type == "mnar"
+        ]
+      ),
+      collapse = ", "
+    )
+  }
+  treated_mnar <- ifelse(treated_mnar == "", "None", treated_mnar)
+  
+  # display only the knn imputations if it was performed
+  fct_levels <- c("full population", "complete cases", "imputed", "KNN imputed")
+  fct_cols <- c(
+    "#4b6da3",
+    "#33a3f2",
+    "#eb4b3d",
+    "#f0b74d"
+  )
+  if (complete_case_note != "") {
+    fct_levels <- fct_levels[-2]
+    fct_cols <- fct_cols[-2]
+  }
   plot_data <- parameter_result_df %>%
     mutate(
       type = case_when(
         type == "raw" ~ "full population",
         type == "complete" ~ "complete cases",
-        type == "knn_impute" ~ "KNN imputed",
+        type == "knn_imputed" ~ "KNN imputed",
         TRUE ~ "imputed"
       )
     ) %>%
     mutate(type = fct_relevel(
       factor(type),
-      c("full population", "complete cases", "imputed", "KNN imputed")
+      fct_levels
     ))
+  
+  if (complete_case_note == "") {
+    complete_case_note <- paste(
+      "#Complete Cases:",
+      plot_data %>% 
+        filter(type == "complete cases") %>%
+        pull(complete_cases) %>%
+        unique()
+    )
+  }
+  
+  
   plot_data %>%
     ggplot() +
     geom_point(
@@ -408,12 +475,9 @@ visualize_parameters_knn <- function(
       data = plot_data %>% filter(type != "truth")
     ) +
     facet_wrap(~coefficient, ncol = 4, scales = "free_y") +
-    scale_color_manual(name = "Estimation", values = c(
-      "#4b6da3",
-      "#33a3f2",
-      "#eb4b3d",
-      "#f0b74d"
-    )) +
+    scale_color_manual(name = "Estimation", values = 
+      fct_cols
+    ) +
     geom_hline(
       aes(yintercept = est), 
       data = plot_data %>% filter(type == "full population"),
@@ -422,13 +486,9 @@ visualize_parameters_knn <- function(
     ) +
     labs(
       y = "Coefficients", x = "",
-      caption = paste(
-        "#Complete Cases:",
-        plot_data %>% 
-          filter(type == "complete cases") %>%
-          pull(complete_cases) %>%
-          unique()
-      )
+      title = paste("Experiment:", str_to_upper(experiment), "- Relative missingness:", rel_missingness),
+      subtitle = paste("Treated as MNAR:", treated_mnar),
+      caption = complete_case_note
     ) +
     theme_minimal() +
     theme(axis.text.x = element_blank())

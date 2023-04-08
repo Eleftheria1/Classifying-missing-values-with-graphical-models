@@ -167,8 +167,13 @@ retransform_1col <- function(df, bn_obj, coln="x2") {
 retransform_columns <- function(imputed_data_list, columns = c("x2")) {
   for (exp in names(imputed_data_list)[-1]) {
     for (i in seq_along(imputed_data_list[[exp]]$data)) {
-      for (imp_index in seq_along(imputed_data_list[[exp]]$amelia_obj[[i]]$imputations)) {
-        for (col_index in seq_along(columns)) {
+      for (col_index in seq_along(columns)) {
+        imputed_data_list[[exp]]$data[[i]] <- retransform_1col(
+          imputed_data_list[[exp]]$data[[i]],
+          imputed_data_list[[exp]]$bn_objects[[i]][columns[col_index]],
+          coln = columns[col_index]
+        )
+        for (imp_index in seq_along(imputed_data_list[[exp]]$amelia_obj[[i]]$imputations)) {
           imputed_data_list[[exp]]$amelia_obj[[i]]$imputations[[imp_index]] <- retransform_1col(
             imputed_data_list[[exp]]$amelia_obj[[i]]$imputations[[imp_index]],
             imputed_data_list[[exp]]$bn_objects[[i]][columns[col_index]],
@@ -249,14 +254,28 @@ impute_one_column_knn <- function(
   df
 }
 
-overall_impute_knn <- function(data_list, ...) {
-  for (i in seq_along(data_list$mnar$data)) {
-    data_list$mnar$knn_obj[[i]] <- impute_df_knn(
-      data_list$mnar$data[[i]],
-      data_list$mnar$amelia_obj[[i]]$imputations$imp1,
-      data_list$mnar$missing[data_list$mnar$missing_type == "mnar"],
-      ...
-    )
+overall_impute_knn <- function(data_list, mnar_selection = "truth", ...) {
+  for (exp in names(data_list)[-1]) {
+    for (i in seq_along(data_list[[exp]]$data)) {
+      # if a classified_data_list was given the detected mnar colmns are used
+      if (is.list(mnar_selection)) {
+        mnar_cols <- mnar_selection[[exp]]$detected_missingness_type[[i]][
+          mnar_selection[[exp]]$detected_missingness_type[[i]] == "mnar"
+        ]
+      # for truth the ground truth missingness type is used
+      } else if (mnar_selection == "truth") {
+        mnar_cols <- data_list[[exp]]$missing[data_list[[exp]]$missing_type == "mnar"]
+      # in any other case the pre specified and fixed column selection is used
+      } else {
+        mnar_cols <- mnar_selection
+      }
+      data_list[[exp]]$knn_obj[[i]] <- impute_df_knn(
+        df = data_list[[exp]]$data[[i]],
+        df_preimputed = data_list[[exp]]$amelia_obj[[i]]$imputations$imp1,
+        mnar_cols = mnar_cols,
+        ...
+      )
+    }
   }
   data_list
 }
@@ -265,8 +284,10 @@ overall_impute_knn <- function(data_list, ...) {
 
 evaluate_parameters_knn <- function(
     imputed_data_list,
+    classified_data_list,
     form = as.formula("y ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8 + x9"),
-    df = 990
+    df = 990,
+    estimated_missingness = TRUE
 ) {
   model_list <- list(mcar = vector("list", 3), mar = vector("list", 3), mnar = vector("list", 3))
   pooled_results <- list(mcar = vector("list", 3), mar = vector("list", 3), mnar = vector("list", 3))
@@ -292,7 +313,7 @@ evaluate_parameters_knn <- function(
     for (i in seq_along(imputed_data_list[[exp]]$amelia_obj)) {
       # imputed data --------------------------------------------
       model_list[[exp]][[i]] <- with.amelia(
-        factorize_columns(imputed_data_list[[exp]]$amelia_obj[[i]]),
+        imputed_data_list[[exp]]$amelia_obj[[i]],
         lm(y ~ x1 + x2 + x3 + x4 + x5 + factor(x6) + x7 + x8 + x9) # CHANGE THIS MANUALLY
       )
       pooled_results[[exp]][[i]] <- summary(pool(as.mira(model_list[[exp]][[i]])))
@@ -313,6 +334,57 @@ evaluate_parameters_knn <- function(
       colnames(pooled_results[[exp]][[i]])[7] <- "lower_bound"
       colnames(pooled_results[[exp]][[i]])[8] <- "upper_bound"
       
+      # knn imputation ------------------------------------------------
+      if (estimated_missingness) {
+        non_mnar_cols <- names(
+          classified_data_list[[exp]]$detected_missingness_type[[i]][
+            classified_data_list[[exp]]$detected_missingness_type[[i]] != "mnar"
+          ]
+        )
+      } else {
+        non_mnar_cols <- names(
+          classified_data_list[[exp]]$missing_type[
+            classified_data_list[[exp]]$missing_type != "mnar"
+          ]
+        )
+      }
+      tmp_knn_data <- list(imputations = lapply(
+        imputed_data_list[[exp]]$amelia_obj[[i]]$imputations,
+        FUN = function(imp) {
+          tmp_knn_df <- imputed_data_list[[exp]]$knn_obj[[i]]
+          for (non_mnar_col in non_mnar_cols) {
+            tmp_knn_df[[non_mnar_col]] <- imp[[non_mnar_col]]
+          }
+          tmp_knn_df
+        }
+      ))
+        
+      knn_model_list <- with.amelia(
+        tmp_knn_data,
+        lm(y ~ x1 + x2 + x3 + x4 + x5 + factor(x6) + x7 + x8 + x9) # CHANGE THIS MANUALLY
+      )
+      
+      tmp_knn_results <- summary(pool(as.mira(knn_model_list)))
+      matrix_knn <- matrix(
+        c(tmp_knn_results[,2]
+          - qt(p = 0.975, df = df) * tmp_knn_results[,3],
+          tmp_knn_results[,2]
+          + qt(p = 0.975, df = df) * tmp_knn_results[,3]),
+        ncol = 2
+      )
+      tmp_knn_results <- bind_cols(tmp_knn_results, matrix_knn)
+      colnames(tmp_knn_results)[7] <- "lower_bound"
+      colnames(tmp_knn_results)[8] <- "upper_bound"
+      knn_results <- tmp_knn_results %>%
+        as_tibble() %>%
+        select(
+          est = "estimate",
+          coefficient = "term",
+          lower_bound,
+          upper_bound
+        ) %>%
+        mutate(type = "knn_imputed")
+      
       # complete case data --------------------------------------------
       model_complete <- lm(
         formula = form,
@@ -328,23 +400,6 @@ evaluate_parameters_knn <- function(
           type = "complete"
         )
       
-      # knn imputed data --------------------------------------------
-      if (exp == "mnar") {
-        model_knn <- lm(
-          formula = form,
-          data = factorize_columns(imputed_data_list[[exp]]$knn_obj[[i]])
-        )
-        knn_results <- model_knn$coefficients %>%
-          as_tibble() %>%
-          select("est" = "value") %>%
-          mutate(
-            coefficient = rownames(confint(model_knn, level = 0.95)),
-            lower_bound = confint(model_knn, level = 0.95)[, 1],
-            upper_bound = confint(model_knn, level = 0.95)[, 2],
-            type = "knn_impute"
-          )
-      }
-      
       # Combine Results
       complete_cases <- nrow(na.omit(imputed_data_list[[exp]]$data[[i]]))
       
@@ -358,12 +413,8 @@ evaluate_parameters_knn <- function(
         ) %>%
         mutate(type = "imputed") %>%
         bind_rows(complete_results) %>%
-        bind_rows(raw_results) 
-      
-      if (exp == "mnar") {
-        parameter_result[[exp]][[i]] <- parameter_result[[exp]][[i]] %>%
-          bind_rows(knn_results)
-      }
+        bind_rows(raw_results) %>%
+        bind_rows(knn_results)
       
       parameter_result[[exp]][[i]] <- parameter_result[[exp]][[i]] %>%
         mutate(

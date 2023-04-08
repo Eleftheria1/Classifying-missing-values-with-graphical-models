@@ -123,6 +123,16 @@ visualized_mixed_data_list$mnar$dens_plots$x6[[1]]
 visualized_mixed_data_list$mnar$dens_plots$x6[[2]]
 visualized_mixed_data_list$mnar$dens_plots$x6[[3]]
 
+visualized_norm_mixed_data_list$mcar$dens_plots$x6[[1]]
+visualized_norm_mixed_data_list$mcar$dens_plots$x6[[2]]
+visualized_norm_mixed_data_list$mcar$dens_plots$x6[[3]]
+visualized_norm_mixed_data_list$mar$dens_plots$x6[[1]]
+visualized_norm_mixed_data_list$mar$dens_plots$x6[[2]]
+visualized_norm_mixed_data_list$mar$dens_plots$x6[[3]]
+visualized_norm_mixed_data_list$mnar$dens_plots$x6[[1]]
+visualized_norm_mixed_data_list$mnar$dens_plots$x6[[2]]
+visualized_norm_mixed_data_list$mnar$dens_plots$x6[[3]]
+
 # Variable x_8
 visualized_mixed_data_list$mcar$dens_plots$x8[[1]]
 visualized_mixed_data_list$mcar$dens_plots$x8[[2]]

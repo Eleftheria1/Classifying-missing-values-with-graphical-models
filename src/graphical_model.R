@@ -29,15 +29,26 @@ fitted_graph <- apply_graph_fitting(
 #-------------------------------------------------------------
 
 # fit and visualize all at the same time
-multi_normal_data_list <- fit_and_visualize_graphs(
+classified_multi_normal_data_list <- fit_and_visualize_graphs(
   multi_normal_data_list,
   type = "pc",
   plot_graph = FALSE
 )
 
 # detect missingness for the full list
-multi_normal_data_list <- add_classification(multi_normal_data_list)
+classified_multi_normal_data_list <- add_classification(classified_multi_normal_data_list)
+# save(classified_multi_normal_data_list, file = "data/classified_multi_normal_data_list.RData")
 
+# fit and visualize all at the same time
+classified_mixed_data_list <- fit_and_visualize_graphs(
+  mixed_data_list,
+  type = "pc",
+  plot_graph = FALSE
+)
+
+# detect missingness for the full list
+classified_mixed_data_list <- add_classification(classified_mixed_data_list)
+# save(classified_mixed_data_list, file = "data/classified_mixed_data_list.RData")
 
 classification_results <- data.frame(
   experiment = rep("", 3 * 3),
