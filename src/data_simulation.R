@@ -77,7 +77,7 @@ mixed_data_list <- simulate_data_list_mixed(
 # Visualize the raw data
 GGally::ggpairs(
   as.data.frame(mixed_data_list$raw$data),
-  columns = 2:ncol(as.data.frame(mixed_data_list$raw$data)),
+  columns = 1:ncol(as.data.frame(mixed_data_list$raw$data)),
   lower = list(continuous = "density")
 ) +
   theme_classic() +
@@ -96,12 +96,14 @@ lm(
 
 plot_single_missing(
   mixed_data_list,
-  simulation_name = "mar",
+  simulation_name = "mnar",
   relative_missingness = 0.1,
-  alpha_non_missing = 0.3,
-  comparison_variable = "x2",
+  alpha_non_missing = 0.1,
+  comparison_variable = "x1",
   density = F,
-  missingness_index = 6
+  missingness_index = 2,
+  marginal = T,
+  fixed_coords = F
 )
 
 # base graph

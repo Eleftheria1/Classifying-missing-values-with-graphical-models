@@ -8,9 +8,14 @@ load("data/classified_multi_normal_data_list.RData")
 load("data/classified_mixed_data_list.RData")
 
 # knn imputation for the ground truth mnar columns
+# for truth one should also specify the true neighbors if graph_neigbors is used
+# this can be done via the feature_vec_truth argument that takes a list of 
+# nodes with each of them with their neighbors like 
+# list("x1" = c("x2", "x7"), "x2" = ...)
 knn_norm_imputed_mixed_data_list <- overall_impute_knn(
   visualized_norm_mixed_data_list,
   mnar_selection = "truth",
+  graph_neighbors = FALSE,
   k = 3,
 )
 # knn imputation for all the columns that were classified to be MNAR by the
@@ -18,7 +23,8 @@ knn_norm_imputed_mixed_data_list <- overall_impute_knn(
 knn_norm_imputed_mixed_data_list <- overall_impute_knn(
   visualized_norm_mixed_data_list,
   mnar_selection = classified_mixed_data_list,
-  k = 3,
+  k = 20,
+  graph_neighbors = T
 )
 
 # for the unnormed visualized mixed data replicate the above
@@ -37,7 +43,7 @@ knn_imputed_mixed_data_list <- overall_impute_knn(
 
 knn_density_comparison_plots(
   knn_imputed_data_list = knn_norm_imputed_mixed_data_list,
-  col_name = "x2",
+  col_name = "x5",
   rel_miss = 0.6,
   exp = "mnar"
 )

@@ -104,7 +104,9 @@ plot_single_missing <- function(
     comparison_variable = "x1",
     alpha_non_missing = 1,
     density = FALSE,
-    missingness_index = 1
+    missingness_index = 1,
+    marginal = FALSE,
+    fixed_coords = FALSE
 ) {
   rel_missingness_index <- which(
     data_list[[simulation_name]]$relative_missingness == relative_missingness
@@ -148,10 +150,10 @@ plot_single_missing <- function(
         "\nRelative missingness:",
         relative_missingness
       )) +
-    coord_fixed() +
+    {if (fixed_coords) coord_fixed()} +
     theme_classic() +
     theme(legend.position = "bottom")
-  if (!density) {
+  if (!density & marginal) {
     plot <- ggMarginal(plot, type = "density")
   }
   plot
@@ -428,7 +430,8 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
     missingness_indicator_x2 <- create_missingness_indicator(
       mixed_data_list$raw$data[[1]],
       from = "x1",
-      rel_missingness = rel_missingness
+      rel_missingness = rel_missingness,
+      multiplier = 3
     )
     missingness <- defMiss(
       varname = "x2",
@@ -440,7 +443,8 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
       mixed_data_list$raw$data[[1]],
       from = "x1",
       rel_missingness = rel_missingness,
-      seed = 3
+      seed = 3,
+      multiplier = 3
     )
     missingness <- defMiss(
       missingness,
@@ -453,7 +457,8 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
       mixed_data_list$raw$data[[1]],
       from = "x1",
       rel_missingness = rel_missingness,
-      seed = 5
+      seed = 5,
+      multiplier = 3
     )
     missingness <- defMiss(
       missingness,
@@ -466,7 +471,8 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
       mixed_data_list$raw$data[[1]],
       from = "x7",
       rel_missingness = rel_missingness,
-      seed = 6
+      seed = 6,
+      multiplier = 3
     )
     missingness <- defMiss(
       missingness,
@@ -479,7 +485,8 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
       mixed_data_list$raw$data[[1]],
       from = "x7",
       rel_missingness = rel_missingness,
-      seed = 8
+      seed = 8,
+      multiplier = 3
     )
     missingness <- defMiss(
       missingness,
@@ -493,12 +500,14 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
       from = "x1",
       rel_missingness = rel_missingness,
       seed = 11,
+      multiplier = 2.2
     )
     missingness_indicator_from4 <- create_missingness_indicator(
       mixed_data_list$raw$data[[1]],
       from = "x4",
       rel_missingness = rel_missingness,
-      seed = 14
+      seed = 14,
+      multiplier = 2.2
     )
     missingness_positions_from1 <- which(missingness_indicator_from1)
     missingness_positions_from1 <- sample(
@@ -550,7 +559,8 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
     missingness_indicator_x2 <- create_missingness_indicator(
       mixed_data_list$raw$data[[1]],
       from = "x1",
-      rel_missingness = rel_missingness
+      rel_missingness = rel_missingness,
+      multiplier = 3
     )
     missingness <- defMiss(
       missingness,
@@ -564,7 +574,8 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
       mixed_data_list$raw$data[[1]],
       from = "x2",
       rel_missingness = rel_missingness,
-      seed = 3
+      seed = 3,
+      multiplier = 3
     )
     missingness <- defMiss(
       missingness,
@@ -577,13 +588,15 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
       mixed_data_list$raw$data[[1]],
       from = "x1",
       rel_missingness = rel_missingness,
-      seed = 5
+      seed = 5,
+      multiplier = 3
     )
     missingness_indicator_x5fromx4 <- create_missingness_indicator(
       mixed_data_list$raw$data[[1]],
       from = "x4",
       rel_missingness = rel_missingness,
-      seed = 55
+      seed = 55,
+      multiplier = 3
     )
     
     missingness_positions_x5fromx1 <- which(missingness_indicator_x5fromx1)
@@ -619,7 +632,8 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
       mixed_data_list$raw$data[[1]],
       from = "x7",
       rel_missingness = rel_missingness,
-      seed = 6
+      seed = 6,
+      multiplier = 3
     )
     missingness <- defMiss(
       missingness,
@@ -632,7 +646,8 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
       mixed_data_list$raw$data[[1]],
       from = "x7",
       rel_missingness = rel_missingness,
-      seed = 8
+      seed = 8,
+      multiplier = 3
     )
     missingness <- defMiss(
       missingness,
@@ -645,13 +660,15 @@ simulate_data_list_mixed <- function(seed, dataset_size = 1000) {
       mixed_data_list$raw$data[[1]],
       from = "x1",
       rel_missingness = rel_missingness,
-      seed = 11
+      seed = 11,
+      multiplier = 3
     )
     missingness_indicator_from7 <- create_missingness_indicator(
       mixed_data_list$raw$data[[1]],
       from = "x7",
       rel_missingness = rel_missingness,
-      seed = 14
+      seed = 14,
+      multiplier = 3
     )
     combined_indicator <- missingness_indicator_from1 | missingness_indicator_from7
     target_missings <- round(rel_missingness * dim(mixed_data_list$raw$data[[1]])[1])

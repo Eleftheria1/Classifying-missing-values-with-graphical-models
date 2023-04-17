@@ -192,33 +192,37 @@ retransform_columns <- function(imputed_data_list, columns = c("x2")) {
 #knn
 
 
-impute_df_knn <- function(
-    df, 
-    df_preimputed, 
-    mnar_cols,
-    nominal_columns = c("x6", "x7", "x8", "x9"),
-    ...
-) {
-  for (col in colnames(df)) {
-    if (col %in% mnar_cols) {
-      nominal <- ifelse(col %in% nominal_columns, TRUE, FALSE)
-      df <- impute_one_column_knn(
-        df = df,
-        df_preimputed = df_preimputed,
-        col_name = col,
-        nominal = nominal,
-        ...
-      )
-    } else {
-      df[[col]] <- df_preimputed[[col]]  
-    }
-  }
-  df
+
+
+
+get_graph_neighbors <- function(graph, var_name, labels) {
+  edge_matrix <- str_split(
+    names(graph@graph@edgeData@data), "\\|", simplify = TRUE
+  )
+  edge_matrix <- plyr::mapvalues(
+    edge_matrix,
+    from = as.character(seq_along(labels)),
+    to = labels,
+    warn_missing = FALSE
+  )
+  colnames(edge_matrix) <- c("from", "to")
+  edges <- as_tibble(edge_matrix)
+  edges$from <- str_replace(edges$from, "missing_", "")
+  edges$to <- str_replace(edges$to, "missing_", "")
+  edges <- edges %>%
+    filter((from == var_name) | (to == var_name)) %>%
+    as.matrix() %>%
+    as.character() %>%
+    unique()
+  
+  edges[edges != var_name]
 }
+
 impute_one_column_knn <- function(
     df, 
     df_preimputed, 
     col_name,
+    feature_vector,
     nominal = FALSE,
     ...
 ) {
@@ -233,11 +237,15 @@ impute_one_column_knn <- function(
   } else {
     kernel = "epanechnikov"
   }
-  
+  # cat("\nInside column name:", col_name)
+  # cat("\nNominal:", nominal)
+  # cat("\nFeature vec:", feature_vector)
   df_preimputed[[col_name]] <- df[[col_name]]
   missingness_index <- is.na(df[[col_name]])
-  train_data <- df_preimputed[!missingness_index, ]
-  test_data <- df_preimputed[missingness_index, ]
+  train_data <- df_preimputed[!missingness_index, ] %>%
+    select(all_of(c(feature_vector, col_name)))
+  test_data <- df_preimputed[missingness_index, ] %>%
+    select(all_of(c(feature_vector, col_name)))
   if (nominal) {
     col_name_formula <- paste0("factor(", col_name, ")")
   } else {
@@ -254,25 +262,88 @@ impute_one_column_knn <- function(
   df
 }
 
-overall_impute_knn <- function(data_list, mnar_selection = "truth", ...) {
+impute_df_knn <- function(
+    df, 
+    df_preimputed, 
+    mnar_cols,
+    feature_vectors,
+    nominal_columns = c("x6", "x7", "x8", "x9"),
+    ...
+) {
+  for (col in colnames(df)) {
+    if (col %in% mnar_cols) {
+      nominal <- ifelse(col %in% nominal_columns, TRUE, FALSE)
+      df <- impute_one_column_knn(
+        df = df,
+        df_preimputed = df_preimputed,
+        feature_vector = feature_vectors[[col]],
+        col_name = col,
+        nominal = nominal,
+        ...
+      )
+    } else {
+      df[[col]] <- df_preimputed[[col]]  
+    }
+  }
+  df
+}
+
+overall_impute_knn <- function(
+    data_list, mnar_selection = "truth",
+    graph_neighbors = TRUE, feature_vec_truth = NULL, 
+    ...
+) {
   for (exp in names(data_list)[-1]) {
     for (i in seq_along(data_list[[exp]]$data)) {
       # if a classified_data_list was given the detected mnar colmns are used
       if (is.list(mnar_selection)) {
-        mnar_cols <- mnar_selection[[exp]]$detected_missingness_type[[i]][
+        mnar_cols <- names(mnar_selection[[exp]]$detected_missingness_type[[i]][
           mnar_selection[[exp]]$detected_missingness_type[[i]] == "mnar"
-        ]
+        ])
       # for truth the ground truth missingness type is used
       } else if (mnar_selection == "truth") {
-        mnar_cols <- data_list[[exp]]$missing[data_list[[exp]]$missing_type == "mnar"]
+        mnar_cols <- data_list[[exp]]$missing[
+          data_list[[exp]]$missing_type == "mnar"
+        ]
       # in any other case the pre specified and fixed column selection is used
       } else {
         mnar_cols <- mnar_selection
       }
+      feature_vectors <- sapply(mnar_cols, function(col) {
+        if (is.list(mnar_selection) & graph_neighbors) {
+          return(
+            get_graph_neighbors(
+              graph = mnar_selection[[exp]]$graph[[i]],
+              var_name = col,
+              labels = colnames(mnar_selection[[exp]]$data[[i]])
+            )
+          )
+        } else {
+          return(
+            colnames(data_list[[exp]]$data[[i]])[
+              !str_starts(colnames(data_list[[exp]]$data[[i]]), "missing_")
+            ]
+          )
+        }
+      }, simplify = FALSE, USE.NAMES = TRUE)
+      
+      if (!is.list(mnar_selection) && 
+          ((mnar_selection == "truth") & graph_neighbors)) {
+        feature_vectors <- feature_vec_truth
+      }
+
+      cat("\n\n-----------------------------")
+      cat("\nExperiment:", exp, "Relative Frequency:", i)
+      for (col in mnar_cols) {
+        cat("\nMNAR Column:", col)
+        cat("\nNeighbors:", str_flatten_comma(feature_vectors[[col]]))
+      }
+      
       data_list[[exp]]$knn_obj[[i]] <- impute_df_knn(
         df = data_list[[exp]]$data[[i]],
         df_preimputed = data_list[[exp]]$amelia_obj[[i]]$imputations$imp1,
         mnar_cols = mnar_cols,
+        feature_vectors = feature_vectors,
         ...
       )
     }
