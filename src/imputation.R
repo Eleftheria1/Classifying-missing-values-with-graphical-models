@@ -45,7 +45,8 @@ normalized_mixed_data_list <- normalize_columns(
 imputed_norm_mixed_data_list <- overall_impute(
   data_list = normalized_mixed_data_list,
   nominals = c("x6", "x7", "x8", "x9"),
-  sqrts = c("x3")
+  sqrts = c("x3"),
+  m = 50
 )
 
 

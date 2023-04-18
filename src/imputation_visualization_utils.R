@@ -351,22 +351,67 @@ visualize_parameters <- function(
 # visualize
 
 # selbe diagnostische plots
-knn_density_comparison_plots <- function(knn_imputed_data_list, col_name, rel_miss, exp = "mnar") {
+knn_density_comparison_plots <- function(
+    knn_imputed_data_list, col_name, rel_miss, exp = "mnar"
+) {
   rel_miss_ind <- which(
     rel_miss == knn_imputed_data_list[[exp]]$relative_missingness
   )
   if (length(rel_miss_ind) == 0) {
     stop("This Relative missingness does not exist.")
   }
+  plot_knn_df <- data.frame(
+    missing_means_y = do.call(
+      rowMeans,
+      list(
+        x = vapply(
+          knn_imputed_data_list[[exp]]$knn_obj[[rel_miss_ind]], 
+          FUN = function(df) {
+            tmp <- df %>%
+              pull(col_name)
+            density(tmp)$y
+          },
+          FUN.VALUE = numeric(
+            length = length(
+              density(knn_imputed_data_list[[exp]]$knn_obj[[rel_miss_ind]]$imp1[[col_name]])$y
+            )
+          )
+        )
+      )
+    ),
+    missing_means_x = do.call(
+      rowMeans,
+      list(
+        x = vapply(
+          knn_imputed_data_list[[exp]]$knn_obj[[rel_miss_ind]], 
+          FUN = function(df) {
+            tmp <- df %>%
+              pull(col_name)
+            density(tmp)$x
+          },
+          FUN.VALUE = numeric(
+            length = length(
+              density(knn_imputed_data_list[[exp]]$knn_obj[[rel_miss_ind]]$imp1[[col_name]])$y
+            )
+          )
+        )
+      )
+    )
+  )
+  
   knn_imputed_data_list[[exp]]$dens_plots[[col_name]][[rel_miss_ind]] +
     geom_line(
+      # data = data.frame(
+      #   x = density(
+      #     knn_imputed_data_list[[exp]]$knn_obj[[rel_miss_ind]][[col_name]]
+      #   )$x,
+      #   y = density(
+      #     knn_imputed_data_list[[exp]]$knn_obj[[rel_miss_ind]][[col_name]]
+      #   )$y
+      # ),
       data = data.frame(
-        x = density(
-          knn_imputed_data_list[[exp]]$knn_obj[[rel_miss_ind]][[col_name]]
-        )$x,
-        y = density(
-          knn_imputed_data_list[[exp]]$knn_obj[[rel_miss_ind]][[col_name]]
-        )$y
+        x = plot_knn_df$missing_means_x,
+        y = plot_knn_df$missing_means_y
       ),
       aes(x = x, y = y), col = "#f0b74d", linetype = "solid",
       linewidth = 0.8,

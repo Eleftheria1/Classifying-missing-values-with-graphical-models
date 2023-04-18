@@ -43,8 +43,8 @@ knn_imputed_mixed_data_list <- overall_impute_knn(
 
 knn_density_comparison_plots(
   knn_imputed_data_list = knn_norm_imputed_mixed_data_list,
-  col_name = "x5",
-  rel_miss = 0.6,
+  col_name = "x2",
+  rel_miss = 0.3,
   exp = "mnar"
 )
 

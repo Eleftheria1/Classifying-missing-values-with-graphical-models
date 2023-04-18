@@ -64,19 +64,47 @@ evaluate_parameters <- function(
   for (exp in names(imputed_data_list)[-1]) {
     for (i in seq_along(imputed_data_list[[exp]]$amelia_obj)) {
       # imputed data --------------------------------------------
+      imputation_length <- length(
+        imputed_data_list[[exp]]$amelia_obj[[i]]$imputations
+      )
+      tmp_amelia_obj_list <- lapply((1:(imputation_length / 5)) - 1, function(j) {
+        list(imputations = lapply(seq(j * 5 + 1, (j * 5 + 1) + 4), function(imp_j) {
+          imputed_data_list[[exp]]$amelia_obj[[i]]$imputations[[imp_j]]
+        }))
+      })
+      tmp_param_est <- sapply(tmp_amelia_obj_list, function(am_obj) {
+        wa <- with.amelia(
+          am_obj,
+          lm(y ~ x1 + x2 + x3 + x4 + x5 + factor(x6) + x7 + x8 + x9) # CHANGE THIS MANUALLY
+        )
+        pr <- summary(pool(as.mira(wa)))
+        pr[,2]
+      })
+      tmp_sd_est <- sapply(tmp_amelia_obj_list, function(am_obj) {
+        wa <- with.amelia(
+          am_obj,
+          lm(y ~ x1 + x2 + x3 + x4 + x5 + factor(x6) + x7 + x8 + x9) # CHANGE THIS MANUALLY
+        )
+        pr <- summary(pool(as.mira(wa)))
+        pr[,3]
+      })
+      tmp_param_est <- rowMeans(tmp_param_est)
+      tmp_sd_est <- rowMeans(tmp_sd_est)
       model_list[[exp]][[i]] <- with.amelia(
-        factorize_columns(imputed_data_list[[exp]]$amelia_obj[[i]]),
+        imputed_data_list[[exp]]$amelia_obj[[i]],
         lm(y ~ x1 + x2 + x3 + x4 + x5 + factor(x6) + x7 + x8 + x9) # CHANGE THIS MANUALLY
       )
       pooled_results[[exp]][[i]] <- summary(pool(as.mira(model_list[[exp]][[i]])))
       
       matrix <- matrix(
-        c(pooled_results[[exp]][[i]][,2]
-          - qt(p = 0.975, df = df) * pooled_results[[exp]][[i]][,3],
-          pooled_results[[exp]][[i]][,2]
-          + qt(p = 0.975, df = df) * pooled_results[[exp]][[i]][,3]),
+        c(tmp_param_est
+          - qt(p = 0.975, df = df) * tmp_sd_est,
+          tmp_param_est
+          + qt(p = 0.975, df = df) * tmp_sd_est),
         ncol = 2
       )
+      pooled_results[[exp]][[i]]$estimate <- tmp_param_est
+      pooled_results[[exp]][[i]]$std.error <- tmp_sd_est
       
       #pooled_results[[exp]][[i]] <- list(
       #  pooled = pooled_results[[exp]][[i]]$pooled,
@@ -346,6 +374,20 @@ overall_impute_knn <- function(
         feature_vectors = feature_vectors,
         ...
       )
+      data_list[[exp]]$knn_obj[[i]] <- sapply(
+        data_list[[exp]]$amelia_obj[[i]]$imputations,
+        FUN = function(imp) {
+          impute_df_knn(
+            df = data_list[[exp]]$data[[i]],
+            df_preimputed = imp,
+            mnar_cols = mnar_cols,
+            feature_vectors = feature_vectors,
+            ...
+          )
+        },
+        simplify = FALSE,
+        USE.NAMES = TRUE
+      )
     }
   }
   data_list
@@ -383,6 +425,32 @@ evaluate_parameters_knn <- function(
   for (exp in names(imputed_data_list)[-1]) {
     for (i in seq_along(imputed_data_list[[exp]]$amelia_obj)) {
       # imputed data --------------------------------------------
+      imputation_length <- length(
+        imputed_data_list[[exp]]$amelia_obj[[i]]$imputations
+      )
+      tmp_amelia_obj_list <- lapply((1:(imputation_length / 5)) - 1, function(j) {
+        list(imputations = lapply(seq(j * 5 + 1, (j * 5 + 1) + 4), function(imp_j) {
+          imputed_data_list[[exp]]$amelia_obj[[i]]$imputations[[imp_j]]
+        }))
+      })
+      tmp_param_est <- sapply(tmp_amelia_obj_list, function(am_obj) {
+        wa <- with.amelia(
+          am_obj,
+          lm(y ~ x1 + x2 + x3 + x4 + x5 + factor(x6) + x7 + x8 + x9) # CHANGE THIS MANUALLY
+        )
+        pr <- summary(pool(as.mira(wa)))
+        pr[,2]
+      })
+      tmp_sd_est <- sapply(tmp_amelia_obj_list, function(am_obj) {
+        wa <- with.amelia(
+          am_obj,
+          lm(y ~ x1 + x2 + x3 + x4 + x5 + factor(x6) + x7 + x8 + x9) # CHANGE THIS MANUALLY
+        )
+        pr <- summary(pool(as.mira(wa)))
+        pr[,3]
+      })
+      tmp_param_est <- rowMeans(tmp_param_est)
+      tmp_sd_est <- rowMeans(tmp_sd_est)
       model_list[[exp]][[i]] <- with.amelia(
         imputed_data_list[[exp]]$amelia_obj[[i]],
         lm(y ~ x1 + x2 + x3 + x4 + x5 + factor(x6) + x7 + x8 + x9) # CHANGE THIS MANUALLY
@@ -390,70 +458,73 @@ evaluate_parameters_knn <- function(
       pooled_results[[exp]][[i]] <- summary(pool(as.mira(model_list[[exp]][[i]])))
       
       matrix <- matrix(
-        c(pooled_results[[exp]][[i]][,2]
-          - qt(p = 0.975, df = df) * pooled_results[[exp]][[i]][,3],
-          pooled_results[[exp]][[i]][,2]
-          + qt(p = 0.975, df = df) * pooled_results[[exp]][[i]][,3]),
+        c(tmp_param_est
+          - qt(p = 0.975, df = df) * tmp_sd_est,
+          tmp_param_est
+          + qt(p = 0.975, df = df) * tmp_sd_est),
         ncol = 2
       )
+      pooled_results[[exp]][[i]]$estimate <- tmp_param_est
+      pooled_results[[exp]][[i]]$std.error <- tmp_sd_est
       
-      #pooled_results[[exp]][[i]] <- list(
-      #  pooled = pooled_results[[exp]][[i]]$pooled,
-      #  glanced = pooled_results[[exp]][[i]]$glanced
-      #)
       pooled_results[[exp]][[i]] <- bind_cols(pooled_results[[exp]][[i]], matrix)
       colnames(pooled_results[[exp]][[i]])[7] <- "lower_bound"
       colnames(pooled_results[[exp]][[i]])[8] <- "upper_bound"
       
       # knn imputation ------------------------------------------------
-      if (estimated_missingness) {
-        non_mnar_cols <- names(
-          classified_data_list[[exp]]$detected_missingness_type[[i]][
-            classified_data_list[[exp]]$detected_missingness_type[[i]] != "mnar"
-          ]
-        )
-      } else {
-        non_mnar_cols <- names(
-          classified_data_list[[exp]]$missing_type[
-            classified_data_list[[exp]]$missing_type != "mnar"
-          ]
-        )
-      }
-      tmp_knn_data <- list(imputations = lapply(
-        imputed_data_list[[exp]]$amelia_obj[[i]]$imputations,
-        FUN = function(imp) {
-          tmp_knn_df <- imputed_data_list[[exp]]$knn_obj[[i]]
-          for (non_mnar_col in non_mnar_cols) {
-            tmp_knn_df[[non_mnar_col]] <- imp[[non_mnar_col]]
-          }
-          tmp_knn_df
-        }
-      ))
-        
-      knn_model_list <- with.amelia(
-        tmp_knn_data,
-        lm(y ~ x1 + x2 + x3 + x4 + x5 + factor(x6) + x7 + x8 + x9) # CHANGE THIS MANUALLY
-      )
       
-      tmp_knn_results <- summary(pool(as.mira(knn_model_list)))
+      # if (estimated_missingness) {
+      #   non_mnar_cols <- names(
+      #     classified_data_list[[exp]]$detected_missingness_type[[i]][
+      #       classified_data_list[[exp]]$detected_missingness_type[[i]] != "mnar"
+      #     ]
+      #   )
+      # } else {
+      #   non_mnar_cols <- names(
+      #     classified_data_list[[exp]]$missing_type[
+      #       classified_data_list[[exp]]$missing_type != "mnar"
+      #     ]
+      #   )
+      # }
+      
+      tmp_knn_obj_list <- lapply((1:(imputation_length / 5)) - 1, function(j) {
+        list(imputations = lapply(seq(j * 5 + 1, (j * 5 + 1) + 4), function(imp_j) {
+          imputed_data_list[[exp]]$knn_obj[[i]][[imp_j]]
+        }))
+      })
+      tmp_param_est <- sapply(tmp_knn_obj_list, function(knn_obj) {
+        wa <- with.amelia(
+          knn_obj,
+          lm(y ~ x1 + x2 + x3 + x4 + x5 + factor(x6) + x7 + x8 + x9) # CHANGE THIS MANUALLY
+        )
+        pr <- summary(pool(as.mira(wa)))
+        pr[,2]
+      })
+      tmp_sd_est <- sapply(tmp_knn_obj_list, function(knn_obj) {
+        wa <- with.amelia(
+          knn_obj,
+          lm(y ~ x1 + x2 + x3 + x4 + x5 + factor(x6) + x7 + x8 + x9) # CHANGE THIS MANUALLY
+        )
+        pr <- summary(pool(as.mira(wa)))
+        pr[,3]
+      })
+      tmp_param_est <- rowMeans(tmp_param_est)
+      tmp_sd_est <- rowMeans(tmp_sd_est)
+      
       matrix_knn <- matrix(
-        c(tmp_knn_results[,2]
-          - qt(p = 0.975, df = df) * tmp_knn_results[,3],
-          tmp_knn_results[,2]
-          + qt(p = 0.975, df = df) * tmp_knn_results[,3]),
+        c(tmp_param_est
+          - qt(p = 0.975, df = df) * tmp_sd_est,
+          tmp_param_est
+          + qt(p = 0.975, df = df) * tmp_sd_est),
         ncol = 2
       )
-      tmp_knn_results <- bind_cols(tmp_knn_results, matrix_knn)
-      colnames(tmp_knn_results)[7] <- "lower_bound"
-      colnames(tmp_knn_results)[8] <- "upper_bound"
-      knn_results <- tmp_knn_results %>%
-        as_tibble() %>%
-        select(
-          est = "estimate",
-          coefficient = "term",
-          lower_bound,
-          upper_bound
-        ) %>%
+      
+      knn_results <- tibble::tibble(
+        est = tmp_param_est,
+        coefficient = pooled_results[[exp]][[i]]$term,
+        lower_bound = matrix_knn[, 1],
+        upper_bound = matrix_knn[, 2]
+      ) %>%
         mutate(type = "knn_imputed")
       
       # complete case data --------------------------------------------
