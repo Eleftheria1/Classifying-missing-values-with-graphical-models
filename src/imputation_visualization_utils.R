@@ -184,11 +184,12 @@ ggplot_compare_density <- function(
 }
 
 
-
+library(tictoc)
 add_all_compare_density_plots <- function(
     imputed_data_list,
     nominal_features = character()
 ) {
+  tic()
   for (exp in names(imputed_data_list)[-1]) {
     for (i in seq_along(imputed_data_list[[exp]]$data)) {
       for (var in imputed_data_list[[exp]]$missing) {
@@ -200,7 +201,9 @@ add_all_compare_density_plots <- function(
         )
       }
     }
+    cat("\nEperiment", exp, "finished.")
   }
+  time <- toc()
   imputed_data_list
 }
 

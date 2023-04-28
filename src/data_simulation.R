@@ -99,9 +99,9 @@ plot_single_missing(
   simulation_name = "mnar",
   relative_missingness = 0.1,
   alpha_non_missing = 0.1,
-  comparison_variable = "x1",
+  comparison_variable = "x2",
   density = F,
-  missingness_index = 2,
+  missingness_index = 3,
   marginal = T,
   fixed_coords = F
 )

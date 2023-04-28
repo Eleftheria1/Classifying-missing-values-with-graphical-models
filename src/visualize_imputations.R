@@ -26,16 +26,16 @@ norm_mixed_data_params <- evaluate_parameters(
 )$parameter_results
 
 
-visualize_parameters(norm_mixed_data_params$mnar[[1]])
 visualize_parameters(mixed_data_params$mnar[[1]])
-visualize_parameters(mixed_data_params$mnar[[2]])
-visualize_parameters(mixed_data_params$mnar[[3]])
-visualize_parameters(mixed_data_params$mar[[1]])
-visualize_parameters(mixed_data_params$mar[[2]])
-visualize_parameters(mixed_data_params$mar[[3]])
-visualize_parameters(mixed_data_params$mcar[[1]])
-visualize_parameters(mixed_data_params$mcar[[2]])
-visualize_parameters(mixed_data_params$mcar[[3]])
+visualize_parameters(norm_mixed_data_params$mnar[[1]])
+visualize_parameters(norm_mixed_data_params$mnar[[2]])
+visualize_parameters(norm_mixed_data_params$mnar[[3]])
+visualize_parameters(norm_mixed_data_params$mar[[1]])
+visualize_parameters(norm_mixed_data_params$mar[[2]])
+visualize_parameters(norm_mixed_data_params$mar[[3]])
+visualize_parameters(norm_mixed_data_params$mcar[[1]])
+visualize_parameters(norm_mixed_data_params$mcar[[2]])
+visualize_parameters(norm_mixed_data_params$mcar[[3]])
 
 ###############################################################################
 # Visualize densities
@@ -51,11 +51,8 @@ visualized_norm_mixed_data_list <- add_all_compare_density_plots(
   nominal_features = c("x6", "x7", "x8", "x9")
 )
 
-#save(visualized_mixed_data_list, file = "data/visualized_mixed_data.RData")
-#save(visualized_norm_mixed_data_list, file = "data/visualized_norm_mixed_data.RData")
-
-ggplot_compare_density(imputed_mixed_data_list$mnar$amelia_obj[[3]], mixed_data_list, var = "x2")
-ggplot_compare_density(imputed_norm_mixed_data_list$mnar$amelia_obj[[3]], mixed_data_list, var = "x2", nominal = F)
+test <- ggplot_compare_density(imputed_mixed_data_list$mnar$amelia_obj[[3]], mixed_data_list, var = "x2", nominal = F)
+ggplot_compare_density(imputed_norm_mixed_data_list$mnar$amelia_obj[[3]], mixed_data_list, var = "x6", nominal = F)
 
 
 # Variable x_3

@@ -22,7 +22,7 @@ fitted_graph <- apply_graph_fitting(
   experiment = "mcar",
   rel_missingness = 0.1,
   alpha = 0.01,
-  type = "mvpc",
+  type = "pc",
   plot_graph = TRUE
 )
 

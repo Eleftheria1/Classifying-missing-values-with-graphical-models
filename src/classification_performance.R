@@ -98,7 +98,7 @@ test %>%
 
 save(
    test,
-   file = paste0(here::here(), "/data/mvpc_results_mixed_500n.RData")
+   file = paste0(here::here(), "/data/graphical_model_results/mvpc/mvpc_results_mixed_500n.RData")
  )
 
 

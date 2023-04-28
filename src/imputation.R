@@ -13,12 +13,12 @@ load(paste0("data/", base_datasets[2]))
 source("src/imputation_utils.R")
 
 set.seed(123)
-# imputed_mixed_data_list <- overall_impute(
-#   data_list = mixed_data_list,
-#   nominals = c("x6", "x7", "x8", "x9"),
-#   sqrts = c("x3")
-# ) 
-
+ #imputed_mixed_data_list <- overall_impute(
+ #  data_list = mixed_data_list,
+ #  nominals = c("x6", "x7", "x8", "x9"),
+ #  sqrts = c("x3"),
+ #  m = 500
+ #) 
 #save(imputed_mixed_data_list, file = "data/imputed_mixed_data.RData")
 load("data/imputed_mixed_data.RData")
 
@@ -46,11 +46,11 @@ imputed_norm_mixed_data_list <- overall_impute(
   data_list = normalized_mixed_data_list,
   nominals = c("x6", "x7", "x8", "x9"),
   sqrts = c("x3"),
-  m = 50
+  m = 500
 )
 
 
 imputed_norm_mixed_data_list <- retransform_columns(
   imputed_norm_mixed_data_list, columns = trans_cols
 )
-# save(imputed_norm_mixed_data_list, file = "data/imputed_norm_mixed_data.RData")
+save(imputed_norm_mixed_data_list, file = "data/imputed_norm_mixed_data.RData")
