@@ -159,3 +159,11 @@ visualize_parameters_knn(
 )
 
 
+# frequency tables for categorical features
+knn_categorical_freq_table(
+  knn_norm_imputed_mixed_data_list_prediction, 
+  var = "x8",
+  exp = "mnar",
+  rel_miss = 0.3
+)
+

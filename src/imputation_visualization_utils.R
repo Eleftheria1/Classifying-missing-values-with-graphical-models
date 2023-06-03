@@ -542,3 +542,116 @@ visualize_parameters_knn <- function(
     theme(axis.text.x = element_blank())
   #theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 }
+
+
+knn_categorical_freq_table <- function(
+    data_list,
+    var = "x2",
+    exp = "mnar",
+    rel_miss = 0.1
+) {
+  rel_missingness_index <- c(
+    "0.1" = 1,
+    "0.3" = 2,
+    "0.6" = 3
+  )[as.character(rel_miss)]
+  
+  # complete cases
+  plot_observed <- data.frame(
+    observed = data_list[[exp]]$amelia_obj[[rel_missingness_index]]$imputations[[1]] %>% 
+      filter(!data_list[[exp]]$amelia_obj[[rel_missingness_index]]$missMatrix[, var]) %>%
+      pull(var)
+  )
+  
+  
+  aggregation_fun <- function(x) {
+    as.numeric(
+      apply(x, 1, function(r) names(which.max(table(r))))
+    )
+  }
+  # amelia imputations
+  plot_missing <- data.frame(
+    missing_means = do.call(
+      aggregation_fun,
+      list(
+        x = vapply(
+          data_list[[exp]]$amelia_obj[[rel_missingness_index]]$imputations, 
+          FUN = function(df) {
+            tmp <- df %>%
+              pull(var)
+            tmp
+          },
+          FUN.VALUE = numeric(
+            length = dim(data_list[[exp]]$amelia_obj[[rel_missingness_index]]$missMatrix)[1]
+          )
+        )
+      )
+    )
+  )
+  # knn imputations
+  plot_missing_knn <- data.frame(
+    missing_means = do.call(
+      aggregation_fun,
+      list(
+        x = vapply(
+          data_list[[exp]]$knn_obj[[rel_missingness_index]], 
+          FUN = function(df) {
+            tmp <- df %>%
+              pull(var)
+            tmp
+          },
+          FUN.VALUE = numeric(
+            length = dim(data_list[[exp]]$amelia_obj[[rel_missingness_index]]$missMatrix)[1]
+          )
+        )
+      )
+    )
+  )
+  tmp <- plot_observed %>%
+    group_by(observed) %>%
+    summarise(count = n()) %>% 
+    ungroup() %>%
+    mutate(count = count/sum(count)) %>%
+    rename(values = "observed", rel_count = "count") %>%
+    mutate(type = "observed") %>%
+    bind_rows(
+      plot_missing %>%
+        group_by(missing_means) %>%
+        summarise(count = n()) %>% 
+        ungroup() %>%
+        mutate(count = count/sum(count)) %>%
+        rename(values = "missing_means", rel_count = "count") %>%
+        mutate(type = "imputed_amelia")
+    ) %>%
+    bind_rows(
+      plot_missing_knn %>%
+        group_by(missing_means) %>%
+        summarise(count = n()) %>% 
+        ungroup() %>%
+        mutate(count = count/sum(count)) %>%
+        rename(values = "missing_means", rel_count = "count") %>%
+        mutate(type = "imputed_knn")
+    ) %>%
+    bind_rows(
+      tibble(true_vals =  data_list$raw$data[[1]][[var]]) %>%
+        group_by(true_vals) %>%
+        summarise(count = n()) %>% 
+        ungroup() %>%
+        mutate(count = count/sum(count)) %>%
+        rename(values = "true_vals", rel_count = "count") %>%
+        mutate(type = "true_vals")
+    ) %>%
+    mutate(values = factor(values)) %>%
+    pivot_wider(names_from = type, values_from = rel_count, id_cols = values)
+  tmp %>%
+    mutate(
+      across(
+        !contains("val"),
+        ~ (.x - tmp$true_vals)
+      )
+    )
+}
+
+
+
+
