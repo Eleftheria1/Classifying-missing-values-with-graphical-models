@@ -80,6 +80,7 @@ create_missingness_indicator <- function(
   seq_along(sample_probs) %in% missing_indicator
 }
 
+#Change names of variables to Latex code
 var2TeX <- function(string, tex = TRUE) {
   if (string == "y") {
     return(string)
@@ -96,6 +97,18 @@ var2TeX <- function(string, tex = TRUE) {
   }
   TeX(raw)
 }
+
+# plot_single_missing: Generates a plot to explore missingness patterns in a dataset.
+# Parameters:
+#   - data_list: A list containing simulation data
+#   - simulation_name: The name of the simulation within the data_list to be plotted.
+#   - relative_missingness: The relative missingness level to be visualized.
+#   - comparison_variable: The variable for comparison on the y-axis of the plot.
+#   - alpha_non_missing: Alpha value (transparency) for non-missing data points (default = 1).
+#   - density: Boolean; if TRUE, a 2D density plot is created, otherwise, points are plotted.
+#   - missingness_index: Index to select a specific missingness variable (default = 1).
+#   - marginal: Boolean; if TRUE and density is FALSE, marginal density plots are added.
+#   - fixed_coords: Boolean; if TRUE, forces the plot's aspect ratio to be 1:1.
 
 plot_single_missing <- function(
     data_list,
@@ -161,7 +174,7 @@ plot_single_missing <- function(
 
 ######################### Multivariate Normal ######################### 
 
-# Simulate the raw data
+# Simulate the raw data 
 simulate_multi_normal_dataset <- function(
     mu, sigma,
     target_formula,
@@ -193,6 +206,15 @@ simulate_multi_normal_dataset <- function(
   genData(n, multi_normal_data_def)
 }
 
+# simulate_data_list_normal: Generates a list containing simulated data from a multivariate normal distribution.
+# Parameters:
+#   - seed: Seed for reproducibility of random data generation.
+#   - dataset_size: Number of data points to generate (default = 1000).
+# Returns a list 'multi_normal_data_list' containing:
+#   - 'raw': A nested list storing the simulated multivariate normal data.
+#            It contains 'data' as a list with the generated data points,
+#            'missing' e.g. x1 if the variable x1 is missing, 'missing_type' e.g.
+#           MCAR,MAR or MNAR, and 'relative_missingness' e.g. 0.1, 0.3 or 0.6
 simulate_data_list_normal <- function(seed, dataset_size = 1000) {
   multi_normal <- simulate_multi_normal_dataset(
     mu = mu,

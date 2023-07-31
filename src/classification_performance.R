@@ -7,6 +7,22 @@ source("src/graphical_model_utils.R")
 library(progress)
 set.seed(123)
 
+# evaluate_simulated_classification: Evaluates the classification performance of missingness type (MCAR, MAR, or MNAR)
+# for simulated datasets.
+# Parameters:
+#   - data_list_type: Type of simulated datasets to use ("normal" for multivariate normal or "mixed" for mixed data).
+#   - dataset_size: Number of data points in each simulated dataset (default = 1000).
+#   - replications: Number of replications for evaluating the classification performance e.g. 100.
+#   - type: Type of graph to fit ("pc" or "mvpc").
+# Description:
+# The 'evaluate_simulated_classification' function evaluates the classification performance for each missingness type
+# (MCAR, MAR, MNAR) using simulated datasets. It iterates 'replications' times and simulates datasets based on the specified 'data_list_type'.
+# For each dataset, it fits the specified graph ('type') and classifies missingness for each variable using the fitted graph.
+# The classification results are stored in 'result_df', a tibble with columns for experiment, variable, missingness type,
+# relative missingness level, classification, and replication number.
+# The function then calculates the 'correctly_classified' column, which indicates whether the classification matches
+# the actual missingness type.
+# Returns the 'result_df' tibble with the added 'correctly_classified' column for evaluation.
 evaluate_simulated_classification <- function(
   data_list_type = c("normal", "mixed"),
   dataset_size = 1000,
@@ -70,6 +86,7 @@ test <- evaluate_simulated_classification(
   type = "mvpc"
 )
 
+# Use above function for data in hand
 test %>%
   mutate(
     var_type = paste0(variable, " ", str_to_upper(missingness_type)),
@@ -96,6 +113,7 @@ test %>%
   facet_wrap(~experiment, scales = "free") +
   theme_minimal()
 
+#save the results
 save(
    test,
    file = paste0(here::here(), "/data/graphical_model_results/mvpc/mvpc_results_mixed_500n.RData")
