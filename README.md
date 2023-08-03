@@ -1,4 +1,4 @@
-# A simulation study the detection of missing data mechanisms with graphical models and their imputation
+# A simulation study: Detection of missing data mechanisms with graphical models and their imputation
 
 Knowing the missing mechanisms in a given dataset is central to handling missing data, minimizing biases that can arise due to missingness and also adapt the imputation method. 
 To detect these mechanisms a graphical representation of these is tested in this simulation study. Graphical models provide a good tool for comprehending, encoding
