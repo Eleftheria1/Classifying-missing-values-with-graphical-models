@@ -1,9 +1,14 @@
+###############################################################################
+# This r- file uses the R-code from imputation_utils.R to perform the imputations
+###############################################################################
+#load required packages
 library(Amelia)
 library(clarify)
 library(tidyverse)
 library(mice)
 library(bestNormalize)
 
+#load required data and src code
 base_datasets <- c("mixed_data.RData", "multi_normal.RData")
 all_data_files <- list.files(path = "data")
 experiment_results <- all_data_files[!(all_data_files %in% base_datasets)]

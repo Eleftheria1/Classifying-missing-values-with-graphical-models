@@ -1,3 +1,6 @@
+###############################################################################
+# This r- file uses the R-code from data_simulation_utils.R to simulate the data
+###############################################################################
 ######################### Simulate data ######################### 
 # For each of the datasets to be simulated we follow the recipe below:
 #   1 simulate the raw data

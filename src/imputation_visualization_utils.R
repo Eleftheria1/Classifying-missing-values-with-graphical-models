@@ -1,4 +1,25 @@
-# Function to compare univariate densities of variables
+# load requiered packages
+library(Amelia)
+library(clarify)
+library(tidyverse)
+library(mice)
+library(bestNormalize)
+
+# ggplot_compare_density: Generate a comparison plot for univariate densities of 
+# observed, imputed, and true distributions for a specified variable.
+# Parameters:
+#   - amelia_obj: An Amelia object containing imputed data.
+#   - data_list: A list of data frames representing different experiments MCAR, MAR, MNAR.
+#   - var: The variable for which the distributions are compared (default = "x2").
+#   - nominal: A logical value indicating whether the variable is nominal (categorical) (default = FALSE).
+#   - expand_limits: A numeric value indicating the range by which the x-axis should be expanded (default = NULL).
+# Description:
+# The 'ggplot_compare_density' function calculates the relative missingness for the variable using the Amelia object ('amelia_obj').
+# For nominal variables, it plots a bar chart with the relative frequency of observed, imputed, and true values.
+# For continuous variables, it plots line charts of the estimated density using kernel density estimation for observed, imputed, and true values.
+# The 'aggregation_fun' is used to handle nominal or continuous variables appropriately.
+# If 'nominal' is TRUE, it uses 'as.numeric(apply(...))' to find the most frequent value for each row. Otherwise, it uses 'rowMeans'.
+# The function returns a ggplot object for the comparison plot.
 ggplot_compare_density <- function(
     amelia_obj,
     data_list, 
@@ -185,6 +206,17 @@ ggplot_compare_density <- function(
 
 
 library(tictoc)
+# add_all_compare_density_plots: Generate and add comparison density plots for all missing variables in the imputed data.
+# Parameters:
+#   - imputed_data_list: A list of imputed data, each corresponding to different experiments MCAR, MAR, MNAR.
+#   - nominal_features: A character vector containing the names of nominal (categorical) variables (default = character()).
+# Description:
+# The 'add_all_compare_density_plots' function generates comparison density plots for all missing variables in the imputed data.
+# It iterates through each experiment and each imputation in the 'imputed_data_list'.
+# For each variable with missing data ('var'), it calls the 'ggplot_compare_density' function to generate a density plot.
+# The 'nominal_features' parameter is used to determine whether a variable is nominal (categorical).
+# The function updates the 'imputed_data_list' by adding the generated density plots to the corresponding slots.
+# It returns the updated 'imputed_data_list' with density plots added.
 add_all_compare_density_plots <- function(
     imputed_data_list,
     nominal_features = character()
@@ -289,7 +321,15 @@ add_all_compare_density_plots <- function(
 #
 
 
-
+# visualize_parameters: Visualize parameter estimates with error bars and full population values.
+# Parameters:
+#   - parameter_result_df: A data frame containing the parameter estimates and confidence intervals.
+# Description:
+# The visualization consists of points for each estimate, error bars indicating the confidence intervals,
+# and dotted lines representing the full population values for each coefficient.
+# The 'full_population_values' tibble is created to store the full population values for each coefficient.
+# The function also adds a caption displaying the number of complete cases in the dataset.
+# It returns the generated ggplot object for the visualization.
 visualize_parameters <- function(
     parameter_result_df
 ) {
@@ -351,9 +391,8 @@ visualize_parameters <- function(
 
 ############################################################################
 #knn
-# visualize
 
-# selbe diagnostische plots
+# The following functions do the same as above but now including also the knn imputations
 knn_density_comparison_plots <- function(
     knn_imputed_data_list, col_name, rel_miss, exp = "mnar"
 ) {
@@ -544,6 +583,22 @@ visualize_parameters_knn <- function(
 }
 
 
+
+# knn_categorical_freq_table: Create a frequency table comparing observed, imputed Amelia, and imputed KNN data.
+# Parameters:
+#   - data_list: A list containing the data and imputation objects for different experiments MCAr, MAR, MNAR.
+#   - var: The variable for which the frequency table is generated.
+#   - exp: The experiment name from which the imputed data is taken.
+#   - rel_miss: The relative missingness level, either "0.1", "0.3", or "0.6".
+# Description:
+# The function calculates the relative counts for each value of the specified variable ('var') in the observed, Amelia imputed,
+# and KNN imputed datasets at the specified relative missingness level ('rel_miss') in the specified experiment ('exp').
+# The 'aggregation_fun' is used to determine the most frequent value for each row.
+# The 'plot_observed' data frame stores the observed data for the specified variable.
+# The 'plot_missing' and 'plot_missing_knn' data frames store the most frequent values in the Amelia and KNN imputed datasets, respectively.
+# The 'tmp' tibble combines the observed, Amelia imputed, and KNN imputed data frequencies.
+# The tibble is then transformed to show the difference between the relative counts and the true values.
+# The function returns the transformed 'tmp' tibble with the frequency table data.
 knn_categorical_freq_table <- function(
     data_list,
     var = "x2",

@@ -1,9 +1,13 @@
+# Some visualizations
+
+#load required packages
 load("data/imputed_mixed_data.RData")
 load("data/imputed_norm_mixed_data.RData")
 load("data/imputed_normal_data.RData")
 source("src/imputation_utils.R")
 source("src/imputation_visualization_utils.R")
 
+# rename variables that do not fit with the new names
 if ("x10" %in% mixed_data_list$mcar$missing) {
   mixed_data_list$mcar$missing[6] <- "y"
 }

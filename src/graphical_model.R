@@ -1,5 +1,5 @@
 #############################################################
-#                  Fit the graphical models
+# Fit the graphical models using graphical_model_utils.R
 #############################################################
 
 # Get required packages & data

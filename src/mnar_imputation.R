@@ -1,3 +1,8 @@
+###############################################################################
+# This r- file uses the R-code from imputation_utils.R  and 
+# imputation_visualization_utils.R to perform the knn imputations for MNAR variables
+###############################################################################
+# Load required files, data and packages
 library(kknn)
 
 source("src/imputation_utils.R")
@@ -8,6 +13,7 @@ load("data/imputed_normal_data.RData")
 load("data/classified_multi_normal_data_list.RData")
 load("data/classified_mixed_data_list.RData")
 
+# change variable names that do not fit
 if ("x10" %in% mixed_data_list$mcar$missing) {
   mixed_data_list$mcar$missing[6] <- "y"
 }
