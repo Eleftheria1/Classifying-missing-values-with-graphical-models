@@ -11,3 +11,7 @@ Amelia was used. For the MNAR variables a weighted knn imputation is carried out
 when using traditional multiple imputation methods which include model assumptions that are violated through this missing mechanism, the imputations
 are quite similar to those of the MCAR/MAR variables when using Amelia. On the other side the imputations suffered from changing the method to the weighted knn imputation.
 
+The main part of the R-code for this simulation study can be found in the "src" folder. The simulated data sets, containing not only the data itself but also results from the models can be reproduced by this code but also downloaded from the "data" folder.
+
+
+
